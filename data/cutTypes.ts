@@ -15,7 +15,7 @@ export const CUT_TYPE_OPTIONS: CutTypeOption[] = [
     description: 'Finely chopped for curries & gravies',
     media: {
       image: 'https://media.istockphoto.com/id/2249938416/photo/diced-bell-peppers-in-three-colors-pizza-toppings-hd-stock-photo.webp?a=1&b=1&s=612x612&w=0&k=20&c=JPOMHkiFknVzVR1wH1Byglt-owU6KrwDti0rWT50giE=',
-      videoUrl: 'https://youtube.com/shorts/oBUwCpN-NgI?si=KMp3O_E52iMVQ_kh',
+      videoUrl: 'https://media.tenor.com/Bg-Cx0qPzu0AAAAM/chopping-ingredients-tommy-g.gif',
     },
   },
   {
@@ -23,7 +23,7 @@ export const CUT_TYPE_OPTIONS: CutTypeOption[] = [
     description: 'Even slices for stir-fry & salads',
     media: {
       image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSp1lhK5cvi8am617xdzRjbYlPlYhcc1bVSQg&s',
-      videoUrl: 'https://youtube.com/shorts/Et2qM9L4kQg?si=jfaRxb5rfsgO6gb6',
+      videoUrl: 'https://media4.giphy.com/media/v1.Y2lkPTZjMDliOTUyajllMTBiOWg2MGN0ZDB0ZHdyNHc5NWpucnk3Z3Npa2p4OHpmdG9veCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Gcy9nYydfSMhbKQJ8u/200.gif',
     },
   },
   {

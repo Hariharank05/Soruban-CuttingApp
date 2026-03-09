@@ -187,7 +187,15 @@ export default function ProductDetailScreen() {
             <TouchableOpacity onPress={() => setVideoModal(null)}><Icon name="close" size={24} color={COLORS.text.primary} /></TouchableOpacity>
           </View>
           {videoModal?.url && (
-            videoModal.url.includes('youtube.com') || videoModal.url.includes('youtu.be') ? (
+            videoModal.url.match(/\.(gif|png|jpg|jpeg|webp)(\?|$)/i) ? (
+              <View style={styles.gifContainer}>
+                <Image
+                  source={{ uri: videoModal.url }}
+                  style={styles.gifPlayer}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : videoModal.url.includes('youtube.com') || videoModal.url.includes('youtu.be') ? (
               <WebView
                 source={{ uri: videoModal.url }}
                 style={styles.webViewPlayer}
@@ -276,4 +284,6 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary },
   videoPlayer: { width: '100%', height: 260 },
   webViewPlayer: { flex: 1 },
+  gifContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
+  gifPlayer: { width: '100%', height: '100%' },
 });
