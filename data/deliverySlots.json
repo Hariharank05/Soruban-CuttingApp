@@ -1,0 +1,7 @@
+[
+  { "id": "1", "label": "ASAP", "sub": "30-45 mins", "icon": "lightning-bolt" },
+  { "id": "2", "label": "Morning", "sub": "8AM - 10AM", "icon": "weather-sunset-up" },
+  { "id": "3", "label": "Afternoon", "sub": "12PM - 2PM", "icon": "weather-sunny" },
+  { "id": "4", "label": "Evening", "sub": "5PM - 7PM", "icon": "weather-sunset-down" },
+  { "id": "5", "label": "Tomorrow Morning", "sub": "8AM - 10AM", "icon": "weather-sunset-up" }
+]

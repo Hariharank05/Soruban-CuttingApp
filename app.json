@@ -24,7 +24,24 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "output": "static",
       "favicon": "./assets/favicon.png"
+    },
+    "scheme": "sorubancuttingapp",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
