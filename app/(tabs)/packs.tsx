@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useScrollContext } from '@/context/ScrollContext';
 import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
 
@@ -13,6 +14,7 @@ const FRUIT_PACK_IDS = ['pack_fruit_salad', 'pack_fruit_juice'];
 
 export default function PacksScreen() {
   const router = useRouter();
+  const { handleScroll } = useScrollContext();
   const [filter, setFilter] = useState<FilterType>('all');
 
   const packs = useMemo(() => {
@@ -96,7 +98,7 @@ export default function PacksScreen() {
         ))}
       </View>
 
-      <FlatList data={packs} keyExtractor={i => i.id} renderItem={renderPack} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} />
+      <FlatList data={packs} keyExtractor={i => i.id} renderItem={renderPack} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16} />
     </SafeAreaView>
   );
 }

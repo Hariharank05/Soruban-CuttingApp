@@ -18,7 +18,7 @@ const FAQS = [
 
 const CONTACT_OPTIONS = [
   { icon: 'phone-outline', label: 'Call Us', value: '+91 98765 43210', color: '#1565C0' },
-  { icon: 'email-outline', label: 'Email', value: 'support@cutready.com', color: '#2E7D32' },
+  { icon: 'email-outline', label: 'Email', value: 'support@cutready.com', color: '#388E3C' },
   { icon: 'chat-outline', label: 'Live Chat', value: 'Available 8AM - 10PM', color: '#F57C00' },
 ];
 

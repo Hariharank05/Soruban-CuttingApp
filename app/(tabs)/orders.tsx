@@ -7,21 +7,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useOrders } from '@/context/OrderContext';
 import { getCutLabel } from '@/data/cutTypes';
+import { useScrollContext } from '@/context/ScrollContext';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   placed: { label: 'Placed', color: '#1565C0', icon: 'clipboard-check' },
-  confirmed: { label: 'Confirmed', color: '#2E7D32', icon: 'check-circle' },
-  cutting: { label: 'Cutting', color: '#E65100', icon: 'content-cut' },
+  confirmed: { label: 'Confirmed', color: '#388E3C', icon: 'check-circle' },
+  cutting: { label: 'Cutting', color: '#4CAF50', icon: 'content-cut' },
   quality_check: { label: 'Quality Check', color: '#F57C00', icon: 'shield-check' },
   packed: { label: 'Packed', color: '#7B1FA2', icon: 'package-variant-closed' },
   out_for_delivery: { label: 'On the Way', color: '#0277BD', icon: 'truck-delivery' },
-  delivered: { label: 'Delivered', color: '#2E7D32', icon: 'check-all' },
+  delivered: { label: 'Delivered', color: '#388E3C', icon: 'check-all' },
   cancelled: { label: 'Cancelled', color: '#D32F2F', icon: 'close-circle' },
 };
 
 export default function OrdersScreen() {
   const router = useRouter();
   const { orders } = useOrders();
+  const { handleScroll } = useScrollContext();
 
   const renderOrder = ({ item }: { item: typeof orders[0] }) => {
     const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.placed;
@@ -72,7 +74,7 @@ export default function OrdersScreen() {
           <Text style={styles.emptyDesc}>Place your first cut & ready order!</Text>
         </View>
       ) : (
-        <FlatList data={orders} keyExtractor={o => o.id} renderItem={renderOrder} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} />
+        <FlatList data={orders} keyExtractor={o => o.id} renderItem={renderOrder} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16} />
       )}
     </SafeAreaView>
   );

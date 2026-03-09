@@ -1,42 +1,42 @@
-// Cutting App theme - Orange/warm tones for cutting service brand
+// Cutting App theme - Fresh green + white for a healthy, professional feel
 
 export const COLORS = {
-  primary: '#E65100',
-  primaryLight: '#FF8A65',
-  primaryDark: '#BF360C',
-  accent: '#FF7043',
-  accentLight: '#FFAB91',
-  background: '#FFF8F5',
-  backgroundSoft: '#FFF3E0',
+  primary: '#4CAF50',
+  primaryLight: '#81C784',
+  primaryDark: '#388E3C',
+  accent: '#FFA726',
+  accentLight: '#FFD180',
+  background: '#F9FAFB',
+  backgroundSoft: '#E8F5E9',
   surface: '#FFFFFF',
   card: '#FFFFFF',
-  border: '#F0E0D6',
-  divider: '#F5E6DB',
-  green: '#2E7D32',
+  border: '#E2E8F0',
+  divider: '#EDF2F7',
+  green: '#388E3C',
   greenLight: '#E8F5E9',
 
   text: {
-    primary: '#1A1A1A',
-    secondary: '#555555',
-    muted: '#8E8E8E',
+    primary: '#333333',
+    secondary: '#5A6B6A',
+    muted: '#94A3B8',
     white: '#FFFFFF',
-    accent: '#E65100',
+    accent: '#4CAF50',
   },
 
   status: {
-    success: '#2E7D32',
-    warning: '#F57C00',
-    error: '#D32F2F',
-    info: '#1565C0',
+    success: '#388E3C',
+    warning: '#FFA726',
+    error: '#E53935',
+    info: '#1E88E5',
   },
 
   gradient: {
-    primary: ['#E65100', '#FF7043'] as const,
-    warm: ['#FF8A65', '#FF7043'] as const,
-    header: ['#FFCCBC', '#FFE0B2'] as const,
-    hero: ['#E65100', '#FF5722'] as const,
-    green: ['#66BB6A', '#43A047'] as const,
-    card: ['#FFFFFF', '#FFF8F5'] as const,
+    primary: ['#4CAF50', '#66BB6A'] as const,
+    warm: ['#81C784', '#66BB6A'] as const,
+    header: ['#E8F5E9', '#F1F8F2'] as const,
+    hero: ['#388E3C', '#4CAF50'] as const,
+    green: ['#4CAF50', '#388E3C'] as const,
+    card: ['#FFFFFF', '#F9FAFB'] as const,
   },
 };
 
@@ -54,8 +54,8 @@ export const SPACING = { xs: 4, sm: 8, md: 12, base: 16, lg: 20, xl: 24, xxl: 32
 export const RADIUS = { sm: 6, md: 10, lg: 16, xl: 24, full: 999 };
 
 export const SHADOW = {
-  sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
-  md: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.09, shadowRadius: 10, elevation: 4 },
-  lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 8 },
-  floating: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 10 },
+  sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  md: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
+  lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 8 },
+  floating: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 10 },
 };

@@ -28,7 +28,7 @@ export default function WalletScreen() {
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
     <View style={styles.txCard}>
-      <View style={[styles.txIcon, { backgroundColor: item.type === 'credit' ? '#E8F5E9' : '#FFF3E0' }]}>
+      <View style={[styles.txIcon, { backgroundColor: item.type === 'credit' ? '#E8F5E9' : '#E8F5E9' }]}>
         <Icon
           name={item.type === 'credit' ? 'arrow-down-circle' : 'arrow-up-circle'}
           size={22}
@@ -63,7 +63,7 @@ export default function WalletScreen() {
 
       {/* Balance Card */}
       <View style={styles.balanceCard}>
-        <LinearGradient colors={['#2E7D32', '#43A047']} style={styles.balanceGrad}>
+        <LinearGradient colors={['#388E3C', '#4CAF50']} style={styles.balanceGrad}>
           <Text style={styles.balanceLabel}>Wallet Balance</Text>
           <Text style={styles.balanceAmount}>{'\u20B9'}{balance}</Text>
           <TouchableOpacity style={styles.addMoneyBtn}>

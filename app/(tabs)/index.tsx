@@ -8,12 +8,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useScrollContext } from '@/context/ScrollContext';
+import { useAuth } from '@/context/AuthContext';
+import AnimatedSearchPlaceholder from '@/src/components/AnimatedSearchPlaceholder';
 import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
 
 const CATEGORIES = [
   { key: 'Vegetables', label: 'Vegetables', image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=200&q=80', color: '#E8F5E9' },
-  { key: 'Fruits', label: 'Fruits', image: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', color: '#FFF3E0' },
+  { key: 'Fruits', label: 'Fruits', image: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', color: '#E8F5E9' },
   { key: 'Healthy Snacks', label: 'Healthy Snacks', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=200&q=80', color: '#E8F5E9' },
   { key: 'Diet Foods', label: 'Diet Foods', image: 'https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?auto=format&fit=crop&w=200&q=80', color: '#E3F2FD' },
   { key: 'Sports Nutrition', label: 'Sports & Gym', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80', color: '#FCE4EC' },
@@ -24,6 +27,8 @@ const POPULAR_IDS = ['1', '4', '13', '7', '19', '22', '11', '23'];
 export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const { handleScroll } = useScrollContext();
+  const { user } = useAuth();
 
   const popularProducts = useMemo(() => productsData.filter(p => POPULAR_IDS.includes(p.id)), []);
   const healthySnacks = useMemo(() => productsData.filter(p => p.category === 'Healthy Snacks').slice(0, 6), []);
@@ -42,18 +47,40 @@ export default function HomeScreen() {
             <Text style={styles.headerSub}>Fresh cut, ready to cook!</Text>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/wallet')} style={styles.walletBtn}>
+              <View style={styles.walletIcon}>
+                <Icon name="wallet-outline" size={20} color={COLORS.text.primary} />
+              </View>
+              <Text style={styles.walletText}>{'\u20B9'}0</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/notifications')}>
               <Icon name="bell-outline" size={24} color={COLORS.text.primary} />
               <View style={styles.notifDot} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.profileBtn} onPress={() => router.push('/(tabs)/profile')}>
-              <Icon name="account-circle" size={32} color={COLORS.text.primary} />
+            <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.profileBtn}>
+              {user?.avatar ? (
+                <Image source={{ uri: user.avatar }} style={styles.profileIconImg} resizeMode="cover" />
+              ) : (
+                <View style={styles.profileIcon}>
+                  <Icon name="account" size={20} color="#FFF" />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      {/* Search Bar */}
+      <TouchableOpacity
+        style={styles.searchBar}
+        onPress={() => router.push('/search')}
+        activeOpacity={0.9}
+      >
+        <Icon name="magnify" size={20} color={COLORS.text.muted} />
+        <AnimatedSearchPlaceholder />
+      </TouchableOpacity>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* Hero Banner */}
         <View style={styles.heroBanner}>
           <LinearGradient colors={COLORS.gradient.hero} style={styles.heroGrad}>
@@ -106,7 +133,7 @@ export default function HomeScreen() {
         <View style={styles.stepsRow}>
           {[
             { icon: 'cart-outline', label: 'Select Items', color: '#E3F2FD' },
-            { icon: 'content-cut', label: 'Choose Cut', color: '#FFF3E0' },
+            { icon: 'content-cut', label: 'Choose Cut', color: '#E8F5E9' },
             { icon: 'package-variant-closed', label: 'We Pack', color: '#E8F5E9' },
             { icon: 'truck-delivery', label: 'Delivered!', color: '#FCE4EC' },
           ].map((step, i) => (
@@ -262,10 +289,25 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.text.primary },
   headerSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  walletBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 17, paddingRight: 8, gap: 2,
+  },
+  walletIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  walletText: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary },
   headerIconBtn: { width: 38, height: 38, justifyContent: 'center', alignItems: 'center', position: 'relative' },
   notifDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
   profileBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  profileIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.text.primary, alignItems: 'center', justifyContent: 'center' },
+  profileIconImg: { width: 36, height: 36, borderRadius: 18 },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#FFF', borderRadius: RADIUS.lg,
+    marginHorizontal: SPACING.base, marginTop: SPACING.sm,
+    paddingHorizontal: 14, paddingVertical: 12,
+    ...SHADOW.sm,
+  },
   scroll: { paddingBottom: 20 },
   heroBanner: { marginHorizontal: SPACING.base, marginTop: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden' },
   heroGrad: { padding: SPACING.base },

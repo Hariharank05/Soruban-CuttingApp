@@ -58,6 +58,8 @@ function RootLayoutNav() {
         <Stack.Screen name="favorites" />
         <Stack.Screen name="help" />
         <Stack.Screen name="about" />
+        <Stack.Screen name="search" />
+        <Stack.Screen name="edit-profile" />
       </Stack>
     </>
   );

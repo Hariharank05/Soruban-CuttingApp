@@ -38,7 +38,7 @@ export default function AboutScreen() {
         {/* Features */}
         <Text style={styles.sectionTitle}>What We Offer</Text>
         {[
-          { icon: 'leaf', title: 'Farm Fresh', desc: 'Vegetables sourced daily from local farms', color: '#2E7D32' },
+          { icon: 'leaf', title: 'Farm Fresh', desc: 'Vegetables sourced daily from local farms', color: '#388E3C' },
           { icon: 'content-cut', title: 'Custom Cutting', desc: 'Choose from 5 cut styles - small pieces, slices, cubes & more', color: COLORS.primary },
           { icon: 'food-variant', title: 'Dish Packs', desc: 'Pre-selected veggie packs for Sambar, Biryani & more', color: '#1565C0' },
           { icon: 'truck-fast', title: 'Quick Delivery', desc: 'Delivery in 30-45 minutes or schedule at your convenience', color: '#F57C00' },
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text.primary },
   scroll: { padding: SPACING.base },
   appCard: { backgroundColor: '#FFF', borderRadius: RADIUS.xl, padding: SPACING.xl, alignItems: 'center', ...SHADOW.sm },
-  appIcon: { width: 72, height: 72, borderRadius: 20, backgroundColor: '#FFF3E0', justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md },
+  appIcon: { width: 72, height: 72, borderRadius: 20, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md },
   appName: { fontSize: 22, fontWeight: '800', color: COLORS.text.primary },
   appVersion: { fontSize: 12, color: COLORS.text.muted, marginTop: 2 },
   appDesc: { fontSize: 13, color: COLORS.text.secondary, textAlign: 'center', lineHeight: 19, marginTop: SPACING.md },

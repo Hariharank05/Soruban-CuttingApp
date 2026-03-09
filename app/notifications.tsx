@@ -17,8 +17,8 @@ interface Notification {
 
 const ICON_MAP: Record<string, { name: string; color: string; bg: string }> = {
   order: { name: 'package-variant', color: '#1565C0', bg: '#E3F2FD' },
-  offer: { name: 'tag-outline', color: '#E65100', bg: '#FFF3E0' },
-  tip: { name: 'heart-pulse', color: '#2E7D32', bg: '#E8F5E9' },
+  offer: { name: 'tag-outline', color: '#4CAF50', bg: '#E8F5E9' },
+  tip: { name: 'heart-pulse', color: '#388E3C', bg: '#E8F5E9' },
   pack: { name: 'food-variant', color: '#7B1FA2', bg: '#F3E5F5' },
 };
 

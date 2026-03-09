@@ -17,7 +17,7 @@ const slides = [
     icon: 'leaf' as const,
     title: 'Farm Fresh Vegetables',
     subtitle: 'All vegetables sourced daily from local farms. No cold storage, no chemicals — just fresh produce.',
-    bg: ['#E65100', '#FF7043'] as const,
+    bg: ['#388E3C', '#4CAF50'] as const,
     dark: false,
   },
   {
@@ -25,7 +25,7 @@ const slides = [
     icon: 'content-cut' as const,
     title: 'Custom Cut Styles',
     subtitle: 'Choose from 5 cutting styles — small pieces, slices, cubes, long cuts & grated. We cut them just the way you need.',
-    bg: ['#FFCCBC', '#FFE0B2'] as const,
+    bg: ['#E8F5E9', '#F1F8F2'] as const,
     dark: true,
   },
   {
@@ -33,15 +33,15 @@ const slides = [
     icon: 'food-variant' as const,
     title: 'Ready Dish Packs',
     subtitle: 'Pre-selected veggie packs for Sambar, Biryani & more. Just cook — no chopping needed!',
-    bg: ['#2E7D32', '#43A047'] as const,
-    dark: false,
+    bg: ['#FFA726', '#FFB74D'] as const,
+    dark: true,
   },
   {
     id: '4',
     icon: 'truck-fast' as const,
     title: 'Quick Delivery',
     subtitle: 'Get fresh cut vegetables delivered in 30-45 minutes or schedule at your convenience.',
-    bg: ['#E65100', '#FF7043'] as const,
+    bg: ['#4CAF50', '#66BB6A'] as const,
     dark: false,
   },
 ];

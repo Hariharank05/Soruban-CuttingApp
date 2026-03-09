@@ -14,7 +14,7 @@ export const DISH_PACKS: DishPack[] = [
     id: 'pack_sambar', name: 'Sambar Pack',
     image: 'https://images.unsplash.com/photo-1630383249896-424e482df921?auto=format&fit=crop&w=400&q=80',
     description: 'All vegetables needed for a delicious South Indian sambar',
-    color: '#FFF3E0', tag: 'Popular', serves: '4-5 people', price: 120,
+    color: '#E8F5E9', tag: 'Popular', serves: '4-5 people', price: 120,
     items: [
       { productId: '1', quantity: 1 }, { productId: '4', quantity: 1 },
       { productId: '7', quantity: 1 }, { productId: '21', quantity: 1 },

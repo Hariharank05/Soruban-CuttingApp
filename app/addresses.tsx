@@ -46,7 +46,7 @@ export default function AddressesScreen() {
   const renderAddress = ({ item }: { item: Address }) => (
     <View style={[styles.addressCard, item.isDefault && styles.addressCardDefault]}>
       <View style={styles.addressHeader}>
-        <View style={[styles.addressIcon, { backgroundColor: item.isDefault ? '#FFF3E0' : '#F5F5F5' }]}>
+        <View style={[styles.addressIcon, { backgroundColor: item.isDefault ? '#E8F5E9' : '#F5F5F5' }]}>
           <Icon name={item.icon as any} size={20} color={item.isDefault ? COLORS.primary : COLORS.text.muted} />
         </View>
         <View style={{ flex: 1 }}>
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   addressIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addressLabel: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
-  defaultBadge: { backgroundColor: '#FFF3E0', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 2 },
+  defaultBadge: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 2 },
   defaultBadgeText: { fontSize: 10, fontWeight: '700', color: COLORS.primary },
   addressText: { fontSize: 12, color: COLORS.text.secondary, marginTop: 4, lineHeight: 17 },
   addressActions: { flexDirection: 'row', gap: 16, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },

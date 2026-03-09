@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
+import { useScrollContext } from '@/context/ScrollContext';
 
 const MENU_ITEMS = [
   { icon: 'map-marker-outline', label: 'Delivery Addresses', color: '#1565C0', route: '/addresses' },
-  { icon: 'wallet-outline', label: 'Wallet', color: '#2E7D32', route: '/wallet' },
+  { icon: 'wallet-outline', label: 'Wallet', color: '#388E3C', route: '/wallet' },
   { icon: 'bell-outline', label: 'Notifications', color: '#F57C00', route: '/notifications' },
   { icon: 'heart-outline', label: 'Favorites', color: '#D32F2F', route: '/favorites' },
   { icon: 'help-circle-outline', label: 'Help & Support', color: '#7B1FA2', route: '/help' },
@@ -20,6 +21,7 @@ const MENU_ITEMS = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { handleScroll } = useScrollContext();
   const { orders } = useOrders();
   const totalOrders = orders.length;
   const totalSaved = orders.reduce((sum, o) => sum + (o.discount || 0), 0);
@@ -30,16 +32,29 @@ export default function ProfileScreen() {
       <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
       </LinearGradient>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* User Card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarCircle}><Icon name="account" size={40} color={COLORS.primary} /></View>
+          {user?.avatar ? (
+            <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarCircle}><Icon name="account" size={40} color={COLORS.primary} /></View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName}>{user?.name || 'Customer'}</Text>
-            <Text style={styles.profilePhone}>+91 {user?.phone || '98765 43210'}</Text>
+            <View style={styles.phoneRow}>
+              <Icon name="phone-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.profilePhone}>+91 {user?.phone || '98765 43210'}</Text>
+            </View>
+            {user?.email ? (
+              <View style={styles.emailRow}>
+                <Icon name="email-outline" size={14} color={COLORS.text.muted} />
+                <Text style={styles.profileEmail}>{user.email}</Text>
+              </View>
+            ) : null}
             <Text style={styles.profileAddress} numberOfLines={1}>{user?.address || '42, Anna Nagar, Coimbatore'}</Text>
           </View>
-          <TouchableOpacity style={styles.editBtn}><Icon name="pencil" size={16} color={COLORS.primary} /></TouchableOpacity>
+          <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/edit-profile')}><Icon name="pencil" size={16} color={COLORS.primary} /></TouchableOpacity>
         </View>
 
         {/* Stats */}
@@ -120,8 +135,12 @@ const styles = StyleSheet.create({
   scroll: { padding: SPACING.base, paddingBottom: 40 },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
   avatarCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.backgroundSoft, justifyContent: 'center', alignItems: 'center' },
+  avatarImage: { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: COLORS.primary },
   profileName: { fontSize: 17, fontWeight: '800', color: COLORS.text.primary },
-  profilePhone: { fontSize: 13, color: COLORS.text.muted, marginTop: 2 },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  profilePhone: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
+  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  profileEmail: { fontSize: 12, color: COLORS.text.muted },
   profileAddress: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
   editBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.backgroundSoft, justifyContent: 'center', alignItems: 'center' },
   statsRow: { flexDirection: 'row', gap: 10, marginTop: SPACING.md },
@@ -137,7 +156,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.md,
     marginBottom: SPACING.sm, ...SHADOW.sm,
   },
-  orderIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#FFF3E0', justifyContent: 'center', alignItems: 'center' },
+  orderIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center' },
   orderIdText: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
   orderMeta: { fontSize: 11, color: COLORS.text.muted, marginTop: 1 },
   orderStatus: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 3 },

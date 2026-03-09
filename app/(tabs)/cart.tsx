@@ -6,11 +6,13 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useCart } from '@/context/CartContext';
+import { useScrollContext } from '@/context/ScrollContext';
 import { getCutLabel, getCutFee } from '@/data/cutTypes';
 
 export default function CartScreen() {
   const router = useRouter();
   const { cartItems, updateQuantity, removeFromCart, getSubtotal, getCuttingTotal, getItemCount } = useCart();
+  const { handleScroll } = useScrollContext();
 
   const subtotal = getSubtotal();
   const cuttingTotal = getCuttingTotal();
@@ -85,6 +87,7 @@ export default function CartScreen() {
       <FlatList
         data={cartItems} keyExtractor={(item, idx) => `${item.id}_${idx}`} renderItem={renderItem}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
+        onScroll={handleScroll} scrollEventThrottle={16}
         ListFooterComponent={
           <View style={styles.billCard}>
             <Text style={styles.billTitle}>Bill Summary</Text>
@@ -120,8 +123,8 @@ const styles = StyleSheet.create({
   itemBody: { flex: 1, marginLeft: SPACING.md },
   itemName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
   itemUnit: { fontSize: 11, color: COLORS.text.muted, marginTop: 1 },
-  cutBadge: { alignSelf: 'flex-start', backgroundColor: '#FFF3E0', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, borderWidth: 1, borderColor: '#FFCC80' },
-  cutBadgeText: { fontSize: 10, fontWeight: '600', color: '#E65100' },
+  cutBadge: { alignSelf: 'flex-start', backgroundColor: '#E8F5E9', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, borderWidth: 1, borderColor: '#A5D6A7' },
+  cutBadgeText: { fontSize: 10, fontWeight: '600', color: '#4CAF50' },
   instructions: { fontSize: 10, color: COLORS.text.muted, marginTop: 3 },
   itemBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   itemPrice: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
