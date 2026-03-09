@@ -13,7 +13,7 @@ import productsData from '@/data/products.json';
 
 const CATEGORIES = [
   { key: 'Vegetables', label: 'Vegetables', image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=200&q=80', color: '#E8F5E9' },
-  { key: 'Fruits', label: 'Fruits', image: 'https://images.unsplash.com/photo-1564093497595-593b96d80f38?auto=format&fit=crop&w=200&q=80', color: '#FFF3E0' },
+  { key: 'Fruits', label: 'Fruits', image: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', color: '#FFF3E0' },
   { key: 'Healthy Snacks', label: 'Healthy Snacks', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=200&q=80', color: '#E8F5E9' },
   { key: 'Diet Foods', label: 'Diet Foods', image: 'https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?auto=format&fit=crop&w=200&q=80', color: '#E3F2FD' },
   { key: 'Sports Nutrition', label: 'Sports & Gym', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80', color: '#FCE4EC' },
@@ -41,9 +41,15 @@ export default function HomeScreen() {
             <Text style={styles.headerTitle}>Cut & Ready</Text>
             <Text style={styles.headerSub}>Fresh cut, ready to cook!</Text>
           </View>
-          <TouchableOpacity style={styles.profileBtn}>
-            <Icon name="account-circle" size={32} color={COLORS.text.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/notifications')}>
+              <Icon name="bell-outline" size={24} color={COLORS.text.primary} />
+              <View style={styles.notifDot} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.profileBtn} onPress={() => router.push('/(tabs)/profile')}>
+              <Icon name="account-circle" size={32} color={COLORS.text.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -256,6 +262,9 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.text.primary },
   headerSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerIconBtn: { width: 38, height: 38, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  notifDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
   profileBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   scroll: { paddingBottom: 20 },
   heroBanner: { marginHorizontal: SPACING.base, marginTop: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden' },
@@ -271,7 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 17, fontWeight: '800', color: COLORS.text.primary,
     marginHorizontal: SPACING.base, marginTop: SPACING.lg, marginBottom: SPACING.md,
   },
-  categoryScroll: { paddingHorizontal: SPACING.base, gap: 10 },
+  categoryScroll: { paddingHorizontal: SPACING.base, gap: 10, paddingVertical: 4 },
   categoryCard: { width: 100, alignItems: 'center', borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
   categoryImage: { width: 100, height: 70 },
   categoryLabel: { fontSize: 11, fontWeight: '700', color: COLORS.text.primary, paddingVertical: 8, textAlign: 'center' },
@@ -283,7 +292,7 @@ const styles = StyleSheet.create({
   stepsRow: { flexDirection: 'row', paddingHorizontal: SPACING.base, gap: 8 },
   stepCard: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: RADIUS.md, gap: 6 },
   stepLabel: { fontSize: 10, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center' },
-  popularGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.base, gap: 10 },
+  popularGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.base, gap: 10, paddingBottom: 4 },
   productCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, ...SHADOW.sm, overflow: 'hidden' },
   productImageWrap: { width: '100%', height: 100, overflow: 'hidden' },
   productImage: { width: '100%', height: '100%' },
@@ -291,19 +300,19 @@ const styles = StyleSheet.create({
   productName: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
   productUnit: { fontSize: 11, color: COLORS.text.muted, marginBottom: 4 },
   productPrice: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
-  packsScroll: { paddingHorizontal: SPACING.base, gap: 10 },
-  packCard: { width: 130, borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
-  packImage: { width: 130, height: 80 },
-  packName: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center', paddingHorizontal: 6, marginTop: 6 },
-  packPrice: { fontSize: 14, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginTop: 4 },
-  packTag: { backgroundColor: COLORS.primary, borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 2, marginTop: 6, alignSelf: 'center', marginBottom: 8 },
-  packTagText: { fontSize: 9, fontWeight: '700', color: '#FFF' },
+  packsScroll: { paddingHorizontal: SPACING.base, gap: 10, paddingVertical: 4 },
+  packCard: { width: 160, borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
+  packImage: { width: 160, height: 100 },
+  packName: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center', paddingHorizontal: 8, marginTop: 8 },
+  packPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginTop: 4 },
+  packTag: { backgroundColor: COLORS.primary, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6, alignSelf: 'center', marginBottom: 10 },
+  packTagText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
   sectionBanner: { marginHorizontal: SPACING.base, marginTop: SPACING.xl, borderRadius: RADIUS.lg, overflow: 'hidden' },
   sectionBannerGrad: { flexDirection: 'row', alignItems: 'center', padding: SPACING.base },
   sectionBannerTitle: { fontSize: 15, fontWeight: '800', color: '#FFF' },
   sectionBannerDesc: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   sectionBannerLink: { fontSize: 12, fontWeight: '700', color: '#FFF', textDecorationLine: 'underline' },
-  horizontalList: { paddingHorizontal: SPACING.base, gap: 10, paddingTop: SPACING.md },
+  horizontalList: { paddingHorizontal: SPACING.base, gap: 10, paddingTop: SPACING.md, paddingBottom: 4 },
   miniCard: { width: 140, backgroundColor: '#FFF', borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
   miniImage: { width: 140, height: 90 },
   miniBody: { padding: 8 },

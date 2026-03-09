@@ -14,40 +14,40 @@ export const CUT_TYPE_OPTIONS: CutTypeOption[] = [
     id: 'small_pieces', label: 'Small Pieces', icon: 'knife', fee: 10,
     description: 'Finely chopped for curries & gravies',
     media: {
-      image: 'https://images.unsplash.com/photo-1622205313162-be1d5712a43f?auto=format&fit=crop&w=400&q=80',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      image: 'https://media.istockphoto.com/id/2249938416/photo/diced-bell-peppers-in-three-colors-pizza-toppings-hd-stock-photo.webp?a=1&b=1&s=612x612&w=0&k=20&c=JPOMHkiFknVzVR1wH1Byglt-owU6KrwDti0rWT50giE=',
+      videoUrl: 'https://youtube.com/shorts/oBUwCpN-NgI?si=KMp3O_E52iMVQ_kh',
     },
   },
   {
     id: 'slices', label: 'Slices', icon: 'knife', fee: 10,
     description: 'Even slices for stir-fry & salads',
     media: {
-      image: 'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?auto=format&fit=crop&w=400&q=80',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSp1lhK5cvi8am617xdzRjbYlPlYhcc1bVSQg&s',
+      videoUrl: 'https://youtube.com/shorts/Et2qM9L4kQg?si=jfaRxb5rfsgO6gb6',
     },
   },
   {
     id: 'cubes', label: 'Cubes', icon: 'cube-outline', fee: 15,
     description: 'Uniform cubes for biryani & soups',
     media: {
-      image: 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=400&q=80',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5ezD-KS6iwuiBmghKqB8W4rvTlp1JOB6KL4TSS2YXKQ&s',
+      videoUrl: 'https://youtube.com/shorts/jSLK4Xm8NDE?si=---BQGV1EHLl8vHA',
     },
   },
   {
     id: 'long_cuts', label: 'Long Cuts', icon: 'knife', fee: 10,
     description: 'Long strips for noodles & fries',
     media: {
-      image: 'https://images.unsplash.com/photo-1590779033100-9f60a05a013d?auto=format&fit=crop&w=400&q=80',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRzjZO-U546wb1z9xNy9UauhZef5_PalkHyBCtpgEZ0ag&s',
+      videoUrl: 'https://youtube.com/shorts/H9RjKD4koyU?si=Sd20lGDOyvYW8wDE',
     },
   },
   {
     id: 'grated', label: 'Grated', icon: 'dots-grid', fee: 20,
     description: 'Finely grated for dosa batter & more',
     media: {
-      image: 'https://images.unsplash.com/photo-1604497181015-76590d828681?auto=format&fit=crop&w=400&q=80',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRiCjNUcnt_Ld-3fDMGTtN1kjCSsBRSOFOCKA&s',
+      videoUrl: 'https://youtube.com/shorts/O_EPSDecgSY?si=X24D7-77-zka5YSO',
     },
   },
 ];

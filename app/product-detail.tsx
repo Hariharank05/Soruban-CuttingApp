@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
+import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { CUT_TYPE_OPTIONS, WEIGHT_OPTIONS, getCutFee } from '@/data/cutTypes';
 import { useCart } from '@/context/CartContext';
@@ -179,14 +180,24 @@ export default function ProductDetailScreen() {
       </View>
 
       {/* Video Modal */}
-      <Modal visible={!!videoModal} animationType="slide" transparent onRequestClose={() => setVideoModal(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{videoModal?.label} - Cutting Demo</Text>
-              <TouchableOpacity onPress={() => setVideoModal(null)}><Icon name="close" size={24} color={COLORS.text.primary} /></TouchableOpacity>
-            </View>
-            {videoModal?.url && (
+      <Modal visible={!!videoModal} animationType="slide" onRequestClose={() => setVideoModal(null)}>
+        <SafeAreaView style={styles.modalFull}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{videoModal?.label} - Cutting Demo</Text>
+            <TouchableOpacity onPress={() => setVideoModal(null)}><Icon name="close" size={24} color={COLORS.text.primary} /></TouchableOpacity>
+          </View>
+          {videoModal?.url && (
+            videoModal.url.includes('youtube.com') || videoModal.url.includes('youtu.be') ? (
+              <WebView
+                source={{ uri: videoModal.url }}
+                style={styles.webViewPlayer}
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
+                userAgent="Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+              />
+            ) : (
               <Video
                 source={{ uri: videoModal.url }}
                 style={styles.videoPlayer}
@@ -194,9 +205,9 @@ export default function ProductDetailScreen() {
                 resizeMode={ResizeMode.CONTAIN}
                 shouldPlay
               />
-            )}
-          </View>
-        </View>
+            )
+          )}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -260,9 +271,9 @@ const styles = StyleSheet.create({
   addBarCut: { fontSize: 10, color: COLORS.text.muted },
   addBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 24, paddingVertical: 14 },
   addBarBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: SPACING.base },
-  modalContent: { backgroundColor: '#FFF', borderRadius: RADIUS.xl, overflow: 'hidden' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.base },
+  modalFull: { flex: 1, backgroundColor: '#000' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.base, backgroundColor: '#FFF' },
   modalTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary },
-  videoPlayer: { width: '100%', height: 220 },
+  videoPlayer: { width: '100%', height: 260 },
+  webViewPlayer: { flex: 1 },
 });

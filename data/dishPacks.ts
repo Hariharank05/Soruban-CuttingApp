@@ -1,10 +1,10 @@
 import type { DishPack, PackSize } from '@/types';
 
 export const PACK_SIZES: PackSize[] = [
-  { id: '250g',  label: 'Small',   serves: '2-3 people',         weightGrams: 250,  weightLabel: '250g' },
-  { id: '500g',  label: 'Medium',  serves: '4-5 people',         weightGrams: 500,  weightLabel: '500g' },
-  { id: '750g',  label: 'Regular', serves: '6-8 people',         weightGrams: 750,  weightLabel: '750g' },
-  { id: '1kg',   label: 'Large',   serves: '10+ people / Hotel', weightGrams: 1000, weightLabel: '1 kg' },
+  { id: '250g', label: 'Small', serves: '2-3 people', weightGrams: 250, weightLabel: '250g' },
+  { id: '500g', label: 'Medium', serves: '4-5 people', weightGrams: 500, weightLabel: '500g' },
+  { id: '750g', label: 'Regular', serves: '6-8 people', weightGrams: 750, weightLabel: '750g' },
+  { id: '1kg', label: 'Large', serves: '10+ people / Hotel', weightGrams: 1000, weightLabel: '1 kg' },
 ];
 
 export const DEFAULT_PACK_SIZE = PACK_SIZES[1];
@@ -59,7 +59,7 @@ export const DISH_PACKS: DishPack[] = [
   },
   {
     id: 'pack_fish_gravy', name: 'Fish Gravy Pack',
-    image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=400&q=80',
+    image: 'https://media.istockphoto.com/id/1495119149/photo/spicy-and-hot-fish-curry-in-a-clay-pot-isolated.jpg?s=612x612&w=0&k=20&c=Q7M1IEjTsg1d_1kebn5Nr8dwTcEfY8Qhi7uU3k7JSVg=',
     description: 'Essential vegetables for a tasty fish curry gravy',
     color: '#E3F2FD', serves: '3-4 people', price: 90,
     items: [

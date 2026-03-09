@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   header: { paddingHorizontal: SPACING.base, paddingVertical: SPACING.md },
   headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text.primary },
-  list: { paddingHorizontal: SPACING.base, paddingBottom: 40 },
+  list: { paddingHorizontal: SPACING.base, paddingTop: SPACING.md, paddingBottom: 40 },
   orderCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   orderId: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
