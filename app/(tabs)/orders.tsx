@@ -59,6 +59,16 @@ export default function OrdersScreen() {
             {cutItems.length > 0 && <Text style={styles.orderMetaCut}>{'\uD83D\uDD2A'} {cutItems.length} cut</Text>}
           </View>
         </View>
+        {item.status !== 'delivered' && item.status !== 'cancelled' && (
+          <TouchableOpacity
+            style={styles.chatBtn}
+            onPress={() => router.push({ pathname: '/order-detail', params: { id: item.id } })}
+            activeOpacity={0.8}
+          >
+            <Icon name="chat-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.chatBtnText}>Chat with Shop</Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     );
   };
@@ -102,4 +112,6 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text.primary, marginTop: SPACING.base },
   emptyDesc: { fontSize: 13, color: COLORS.text.muted, marginTop: 4 },
+  chatBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: SPACING.sm, paddingVertical: 8, borderTopWidth: 1, borderTopColor: COLORS.border },
+  chatBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
 });

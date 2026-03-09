@@ -96,6 +96,8 @@ function FloatingCartBar() {
   );
 }
 
+
+
 export default function TabsLayout() {
   const { getItemCount } = useCart();
   const count = getItemCount();
@@ -153,6 +155,7 @@ export default function TabsLayout() {
           />
         </Tabs>
         <FloatingCartBar />
+       
       </View>
     </ScrollProvider>
   );
@@ -207,5 +210,12 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center', alignItems: 'center',
+  },
+  chatFab: {
+    position: 'absolute', right: 16,
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6,
   },
 });

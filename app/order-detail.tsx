@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import React, { useMemo, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useOrders } from '@/context/OrderContext';
 import { getCutLabel } from '@/data/cutTypes';
+
+type ChatMsg = { id: string; text: string; sender: 'user' | 'shop'; time: string };
 
 const STATUS_ICONS: Record<string, string> = {
   'Order Placed': 'clipboard-check', 'Confirmed': 'check-circle', 'Cutting Started': 'knife',
@@ -18,6 +20,33 @@ export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { orders } = useOrders();
   const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  const scrollToEnd = () => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
+    { id: '1', text: 'Hi! Your order is being prepared.', sender: 'shop', time: '10:30 AM' },
+    { id: '2', text: 'We are using the freshest vegetables for your order!', sender: 'shop', time: '10:31 AM' },
+  ]);
+  const [inputText, setInputText] = useState('');
+
+  const sendMessage = () => {
+    if (!inputText.trim()) return;
+    const now = new Date();
+    const timeStr2 = now.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    setChatMessages(prev => [...prev, { id: Date.now().toString(), text: inputText.trim(), sender: 'user', time: timeStr2 }]);
+    setInputText('');
+    scrollToEnd();
+    // Auto-reply after short delay
+    setTimeout(() => {
+      const replyTime = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+      setChatMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: 'Thanks for your message! We will get back to you shortly.', sender: 'shop', time: replyTime }]);
+      scrollToEnd();
+    }, 1500);
+  };
 
   if (!order) return <SafeAreaView style={styles.safe}><Text style={{ textAlign: 'center', marginTop: 60 }}>Order not found</Text></SafeAreaView>;
 
@@ -38,7 +67,8 @@ export default function OrderDetailScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Status */}
         <View style={styles.statusBanner}>
           <LinearGradient colors={COLORS.gradient.primary} style={styles.statusGrad}>
@@ -107,8 +137,49 @@ export default function OrderDetailScreen() {
           <View style={styles.billRow}><Text style={styles.billLabel}>Delivery Fee</Text><Text style={styles.billValue}>{'\u20B9'}{order.deliveryFee}</Text></View>
           <View style={[styles.billRow, styles.billTotal]}><Text style={styles.billTotalLabel}>Total Paid</Text><Text style={styles.billTotalValue}>{'\u20B9'}{order.total}</Text></View>
         </View>
+        {/* Chat with Shop */}
+        <View style={styles.chatCard}>
+          <View style={styles.chatHeader}>
+            <Icon name="chat-outline" size={20} color={COLORS.text.primary} />
+            <Text style={styles.chatTitle}>Chat with Shop</Text>
+            <View style={styles.chatOnlineDot} />
+          </View>
+          <View style={styles.chatMessages}>
+            {chatMessages.length === 0 ? (
+              <Text style={styles.chatEmpty}>No messages yet. Say hi to the shop!</Text>
+            ) : (
+              chatMessages.map(msg => (
+                <View key={msg.id} style={[styles.chatBubble, msg.sender === 'user' ? styles.chatBubbleUser : styles.chatBubbleShop]}>
+                  <Text style={[styles.chatBubbleText, msg.sender === 'user' && styles.chatBubbleTextUser]}>{msg.text}</Text>
+                  <Text style={[styles.chatBubbleTime, msg.sender === 'user' && styles.chatBubbleTimeUser]}>{msg.time}</Text>
+                </View>
+              ))
+            )}
+          </View>
+          <View style={styles.chatInputRow}>
+            <TextInput
+              style={styles.chatInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Type a message..."
+              placeholderTextColor={COLORS.text.muted}
+              onSubmitEditing={sendMessage}
+              returnKeyType="send"
+              onFocus={scrollToEnd}
+            />
+            <TouchableOpacity
+              style={[styles.chatSendBtn, inputText.trim() && styles.chatSendBtnActive]}
+              onPress={sendMessage}
+              disabled={!inputText.trim()}
+            >
+              <Icon name="send" size={18} color={inputText.trim() ? '#FFF' : COLORS.text.muted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={{ height: 30 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -152,4 +223,21 @@ const styles = StyleSheet.create({
   billTotal: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 6, paddingTop: 10 },
   billTotalLabel: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
   billTotalValue: { fontSize: 17, fontWeight: '800', color: COLORS.primary },
+  chatCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
+  chatHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md },
+  chatTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text.primary, marginLeft: 8, flex: 1 },
+  chatOnlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50' },
+  chatMessages: { maxHeight: 250, marginBottom: SPACING.sm },
+  chatEmpty: { fontSize: 12, color: COLORS.text.muted, textAlign: 'center', paddingVertical: SPACING.lg },
+  chatBubble: { maxWidth: '80%', borderRadius: RADIUS.md, padding: 10, marginBottom: 8 },
+  chatBubbleShop: { alignSelf: 'flex-start', backgroundColor: '#F1F5F9' },
+  chatBubbleUser: { alignSelf: 'flex-end', backgroundColor: COLORS.primary },
+  chatBubbleText: { fontSize: 13, color: COLORS.text.primary, lineHeight: 18 },
+  chatBubbleTextUser: { color: '#FFF' },
+  chatBubbleTime: { fontSize: 10, color: COLORS.text.muted, marginTop: 4 },
+  chatBubbleTimeUser: { color: 'rgba(255,255,255,0.7)' },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.sm },
+  chatInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: COLORS.text.primary },
+  chatSendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' },
+  chatSendBtnActive: { backgroundColor: COLORS.primary },
 });

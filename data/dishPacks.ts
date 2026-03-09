@@ -117,7 +117,7 @@ export const DISH_PACKS: DishPack[] = [
   },
   {
     id: 'pack_fruit_salad', name: 'Fruit Salad Pack',
-    image: 'https://images.unsplash.com/photo-1564093497595-593b96d80f38?auto=format&fit=crop&w=400&q=80',
+    image: 'https://plus.unsplash.com/premium_photo-1664478279991-832059d65835?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZnJ1aXQlMjBzYWxhZHxlbnwwfHwwfHx8MA%3D%3D',
     description: 'Fresh seasonal fruits for a healthy fruit salad',
     color: '#FFF8E1', tag: 'Healthy', serves: '3-4 people', price: 180,
     items: [
