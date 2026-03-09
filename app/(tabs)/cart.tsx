@@ -58,7 +58,7 @@ export default function CartScreen() {
         </View>
       </View>
       <TouchableOpacity style={styles.removeBtn} onPress={() => removeFromCart(item.id)}>
-        <Icon name="close" size={16} color={COLORS.text.muted} />
+        <Icon name="delete-outline" size={18} color={COLORS.status.error} />
       </TouchableOpacity>
     </View>
   );

@@ -202,7 +202,7 @@ export default function CheckoutScreen() {
       <View style={styles.orderBar}>
         <View><Text style={styles.orderBarTotal}>{'\u20B9'}{total}</Text><Text style={styles.orderBarSub}>{cartItems.length} items | {deliveryLabel}</Text></View>
         <TouchableOpacity style={[styles.orderBarBtn, placing && { opacity: 0.6 }]} onPress={handlePlaceOrder} disabled={placing}>
-          <Icon name="content-cut" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : 'Place Order'}</Text>
+          <Icon name="cart-check" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : 'Place Order'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

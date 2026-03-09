@@ -31,9 +31,9 @@ export default function SplashScreen() {
     <LinearGradient colors={COLORS.gradient.header} style={styles.container}>
       <Animated.View style={[styles.logoWrap, { transform: [{ scale }], opacity }]}>
         <View style={styles.logoCircle}>
-          <Icon name="content-cut" size={52} color={COLORS.primary} />
+          <Icon name="basket" size={52} color={COLORS.primary} />
         </View>
-        <Text style={styles.appName}>Cut & Ready</Text>
+        <Text style={styles.appName}>Chopify</Text>
         <Text style={styles.tagline}>Fresh Cut Veggies, Delivered to You</Text>
       </Animated.View>
       <Text style={styles.powered}>Made with care in Coimbatore</Text>

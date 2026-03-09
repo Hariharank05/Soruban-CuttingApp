@@ -22,7 +22,7 @@ const slides = [
   },
   {
     id: '2',
-    icon: 'content-cut' as const,
+    icon: 'knife' as const,
     title: 'Custom Cut Styles',
     subtitle: 'Choose from 5 cutting styles — small pieces, slices, cubes, long cuts & grated. We cut them just the way you need.',
     bg: ['#E8F5E9', '#F1F8F2'] as const,

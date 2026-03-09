@@ -28,9 +28,9 @@ export default function AboutScreen() {
         {/* App Info */}
         <View style={styles.appCard}>
           <View style={styles.appIcon}>
-            <Icon name="content-cut" size={36} color={COLORS.primary} />
+            <Icon name="basket" size={36} color={COLORS.primary} />
           </View>
-          <Text style={styles.appName}>Cut & Ready</Text>
+          <Text style={styles.appName}>Chopify</Text>
           <Text style={styles.appVersion}>Version 1.0.0</Text>
           <Text style={styles.appDesc}>Fresh cut vegetables & fruits delivered to your doorstep. Choose your veggies, select the cut style, and we deliver them ready for your kitchen!</Text>
         </View>
@@ -39,7 +39,7 @@ export default function AboutScreen() {
         <Text style={styles.sectionTitle}>What We Offer</Text>
         {[
           { icon: 'leaf', title: 'Farm Fresh', desc: 'Vegetables sourced daily from local farms', color: '#388E3C' },
-          { icon: 'content-cut', title: 'Custom Cutting', desc: 'Choose from 5 cut styles - small pieces, slices, cubes & more', color: COLORS.primary },
+          { icon: 'knife', title: 'Custom Cutting', desc: 'Choose from 5 cut styles - small pieces, slices, cubes & more', color: COLORS.primary },
           { icon: 'food-variant', title: 'Dish Packs', desc: 'Pre-selected veggie packs for Sambar, Biryani & more', color: '#1565C0' },
           { icon: 'truck-fast', title: 'Quick Delivery', desc: 'Delivery in 30-45 minutes or schedule at your convenience', color: '#F57C00' },
           { icon: 'heart-pulse', title: 'Health Focus', desc: 'Diet foods, sports nutrition & healthy snacks for everyone', color: '#D32F2F' },

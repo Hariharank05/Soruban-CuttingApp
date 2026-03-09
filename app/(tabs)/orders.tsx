@@ -12,7 +12,7 @@ import { useScrollContext } from '@/context/ScrollContext';
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   placed: { label: 'Placed', color: '#1565C0', icon: 'clipboard-check' },
   confirmed: { label: 'Confirmed', color: '#388E3C', icon: 'check-circle' },
-  cutting: { label: 'Cutting', color: '#4CAF50', icon: 'content-cut' },
+  cutting: { label: 'Cutting', color: '#4CAF50', icon: 'knife' },
   quality_check: { label: 'Quality Check', color: '#F57C00', icon: 'shield-check' },
   packed: { label: 'Packed', color: '#7B1FA2', icon: 'package-variant-closed' },
   out_for_delivery: { label: 'On the Way', color: '#0277BD', icon: 'truck-delivery' },
@@ -71,7 +71,7 @@ export default function OrdersScreen() {
         <View style={styles.empty}>
           <Icon name="clipboard-text-outline" size={64} color={COLORS.text.muted} />
           <Text style={styles.emptyTitle}>No orders yet</Text>
-          <Text style={styles.emptyDesc}>Place your first cut & ready order!</Text>
+          <Text style={styles.emptyDesc}>Place your first Chopify order!</Text>
         </View>
       ) : (
         <FlatList data={orders} keyExtractor={o => o.id} renderItem={renderOrder} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16} />

@@ -40,7 +40,7 @@ export default function LoginScreen() {
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
             <View style={styles.heroBg}>
-              <Icon name="content-cut" size={52} color={COLORS.primary} />
+              <Icon name="basket" size={52} color={COLORS.primary} />
               <Text style={styles.heroTitle}>Customer Login</Text>
               <Text style={styles.heroSub}>Enter your mobile number to continue</Text>
             </View>

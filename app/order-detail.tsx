@@ -9,7 +9,7 @@ import { useOrders } from '@/context/OrderContext';
 import { getCutLabel } from '@/data/cutTypes';
 
 const STATUS_ICONS: Record<string, string> = {
-  'Order Placed': 'clipboard-check', 'Confirmed': 'check-circle', 'Cutting Started': 'content-cut',
+  'Order Placed': 'clipboard-check', 'Confirmed': 'check-circle', 'Cutting Started': 'knife',
   'Quality Check': 'shield-check', 'Packed': 'package-variant-closed', 'Out for Delivery': 'truck-delivery', 'Delivered': 'check-all',
 };
 
@@ -42,7 +42,7 @@ export default function OrderDetailScreen() {
         {/* Status */}
         <View style={styles.statusBanner}>
           <LinearGradient colors={COLORS.gradient.primary} style={styles.statusGrad}>
-            <Icon name="content-cut" size={32} color="#FFF" />
+            <Icon name="package-variant" size={32} color="#FFF" />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={styles.statusLabel}>
                 {order.status === 'cutting' ? 'Cutting in Progress...' : order.status === 'delivered' ? 'Delivered!' : order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}

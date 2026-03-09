@@ -59,20 +59,20 @@ function FloatingCartBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { tabBarTranslateY } = useScrollContext();
   const count = getItemCount();
 
   if (count === 0 || pathname === '/cart') return null;
 
   const lastImage = cartItems[0]?.image;
 
+  const tabBarHeight = 60 + Math.max(insets.bottom, 8);
+
   return (
     <Animated.View
       style={[
         styles.floatingCart,
         {
-          bottom: 68 + Math.max(insets.bottom, 8),
-          transform: [{ translateY: tabBarTranslateY }],
+          bottom: tabBarHeight + 8,
         },
       ]}
     >
@@ -187,12 +187,12 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
   floatingCart: {
-    position: 'absolute', alignSelf: 'center',
+    position: 'absolute', left: 0, right: 0, alignItems: 'center',
   },
   floatingCartInner: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#388E3C', borderRadius: 30,
-    paddingVertical: 6, paddingLeft: 6, paddingRight: 6,
+    paddingVertical: 8, paddingLeft: 8, paddingRight: 12,
     elevation: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
   },

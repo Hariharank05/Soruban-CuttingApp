@@ -29,7 +29,7 @@ const NOTIFICATIONS: Notification[] = [
   { id: '4', type: 'order', title: 'Order Delivered', message: 'Your order #CUT1001 has been delivered successfully. Enjoy your meal!', time: '2 days ago', read: true },
   { id: '5', type: 'offer', title: 'Weekend Special', message: 'Sambar Pack + Poriyal Pack combo at just ₹199. Order before Sunday!', time: '3 days ago', read: true },
   { id: '6', type: 'tip', title: 'Nutrition Alert', message: 'Spinach is rich in iron and great for boosting immunity. Add it to your cart!', time: '4 days ago', read: true },
-  { id: '7', type: 'pack', title: 'Recommended for You', message: 'Based on your orders, try the Biryani Veggie Pack — freshly cut & ready!', time: '5 days ago', read: true },
+  { id: '7', type: 'pack', title: 'Recommended for You', message: 'Based on your orders, try the Biryani Veggie Pack — freshly Chopify!', time: '5 days ago', read: true },
   { id: '8', type: 'order', title: 'Rate Your Order', message: 'How was your last order? Tap to rate and help us improve.', time: '1 week ago', read: true },
 ];
 

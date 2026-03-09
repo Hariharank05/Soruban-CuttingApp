@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, useWindowDimensions, StatusBar,
+  Image, useWindowDimensions, StatusBar, FlatList,
 } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useScrollContext } from '@/context/ScrollContext';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import AnimatedSearchPlaceholder from '@/src/components/AnimatedSearchPlaceholder';
 import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
@@ -22,7 +23,120 @@ const CATEGORIES = [
   { key: 'Sports Nutrition', label: 'Sports & Gym', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80', color: '#FCE4EC' },
 ];
 
+const OFFERS = [
+  { id: '1', title: 'Fresh Cut Vegetables & Fruits', desc: 'Select your veggies, choose your cut style & we deliver!', bg: ['#388E3C', '#4CAF50'] as const, icon: 'shopping' as const, route: '/browse', params: { category: 'Vegetables' }, btn: 'Order Now' },
+  { id: '2', title: 'Free Cutting on First Order', desc: 'Choose any cut style absolutely free!', bg: ['#1565C0', '#1E88E5'] as const, icon: 'tag-outline' as const, route: null, params: null, btn: '' },
+  { id: '3', title: 'Dish Packs from \u20B995', desc: 'Sambar, Biryani & more - pre-cut for your dish!', bg: ['#E65100', '#F57C00'] as const, icon: 'food-variant' as const, route: '/(tabs)/packs', params: null, btn: 'View Packs' },
+  { id: '4', title: 'Healthy Diet Packs', desc: 'Low calorie, high protein foods for fitness lovers', bg: ['#7B1FA2', '#9C27B0'] as const, icon: 'heart-pulse' as const, route: '/browse', params: { category: 'Diet Foods' }, btn: 'Explore' },
+  { id: '5', title: 'Buy 2 Get 1 Free', desc: 'On all seasonal fruit packs this week!', bg: ['#C62828', '#EF5350'] as const, icon: 'fruit-watermelon' as const, route: '/browse', params: { category: 'Fruits' }, btn: 'Shop Now' },
+];
+
 const POPULAR_IDS = ['1', '4', '13', '7', '19', '22', '11', '23'];
+
+function OffersCarousel({ width }: { width: number }) {
+  const flatListRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const indexRef = useRef(0);
+  const router = useRouter();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = (indexRef.current + 1) % OFFERS.length;
+      indexRef.current = next;
+      flatListRef.current?.scrollToOffset({ offset: next * width, animated: true });
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [width]);
+
+  const onScroll = useCallback((e: any) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (idx !== indexRef.current && idx >= 0 && idx < OFFERS.length) {
+      indexRef.current = idx;
+      setActiveIndex(idx);
+    }
+  }, [width]);
+
+  return (
+    <View style={styles.offersSection}>
+      <FlatList
+        ref={flatListRef}
+        data={OFFERS}
+        keyExtractor={i => i.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        renderItem={({ item }) => (
+          <View style={{ width, paddingHorizontal: SPACING.base }}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => { if (item.route) router.push(item.params ? { pathname: item.route, params: item.params } as any : item.route as any); }}
+            >
+              <LinearGradient colors={item.bg} style={styles.offerCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.offerTitle}>{item.title}</Text>
+                  <Text style={styles.offerDesc}>{item.desc}</Text>
+                  {item.btn ? (
+                    <View style={styles.offerBtn}>
+                      <Text style={styles.offerBtnText}>{item.btn}</Text>
+                      <Icon name="chevron-right" size={14} color={COLORS.primary} />
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.offerIconWrap}>
+                  <Icon name={item.icon} size={36} color="rgba(255,255,255,0.35)" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+      <View style={styles.offerDots}>
+        {OFFERS.map((_, i) => (
+          <View key={i} style={[styles.offerDot, activeIndex === i && styles.offerDotActive]} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function AddToCartButton({ item }: { item: any }) {
+  const { cartItems, addToCart, updateQuantity } = useCart();
+  const inCart = cartItems.find((c) => c.id === item.id);
+  const qty = inCart?.quantity || 0;
+
+  if (qty === 0) {
+    return (
+      <TouchableOpacity
+        style={styles.addBtn}
+        onPress={(e) => { e.stopPropagation(); addToCart(item, 1); }}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.addBtnText}>ADD</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={styles.qtyRow}>
+      <TouchableOpacity
+        style={styles.qtyBtn}
+        onPress={(e) => { e.stopPropagation(); updateQuantity(item.id, qty - 1); }}
+      >
+        <Icon name="minus" size={14} color={COLORS.primary} />
+      </TouchableOpacity>
+      <Text style={styles.qtyText}>{qty}</Text>
+      <TouchableOpacity
+        style={styles.qtyBtn}
+        onPress={(e) => { e.stopPropagation(); updateQuantity(item.id, qty + 1); }}
+      >
+        <Icon name="plus" size={14} color={COLORS.primary} />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -43,7 +157,7 @@ export default function HomeScreen() {
       <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerTitle}>Cut & Ready</Text>
+            <Text style={styles.headerTitle}>Chopify</Text>
             <Text style={styles.headerSub}>Fresh cut, ready to cook!</Text>
           </View>
           <View style={styles.headerActions}>
@@ -68,35 +182,21 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Search Bar */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => router.push('/search')}
+          activeOpacity={0.9}
+        >
+          <Icon name="magnify" size={20} color={COLORS.text.muted} />
+          <AnimatedSearchPlaceholder />
+        </TouchableOpacity>
       </LinearGradient>
 
-      {/* Search Bar */}
-      <TouchableOpacity
-        style={styles.searchBar}
-        onPress={() => router.push('/search')}
-        activeOpacity={0.9}
-      >
-        <Icon name="magnify" size={20} color={COLORS.text.muted} />
-        <AnimatedSearchPlaceholder />
-      </TouchableOpacity>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
-        {/* Hero Banner */}
-        <View style={styles.heroBanner}>
-          <LinearGradient colors={COLORS.gradient.hero} style={styles.heroGrad}>
-            <Text style={styles.heroTitle}>Fresh Cut Vegetables & Fruits</Text>
-            <Text style={styles.heroDesc}>
-              Select your veggies, choose how you want them cut, and we deliver them ready for your kitchen!
-            </Text>
-            <TouchableOpacity
-              style={styles.heroBtn}
-              onPress={() => router.push({ pathname: '/browse', params: { category: 'Vegetables' } })}
-            >
-              <Text style={styles.heroBtnText}>Order Now</Text>
-              <Icon name="chevron-right" size={16} color={COLORS.primary} />
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+        {/* Offers Carousel */}
+        <OffersCarousel width={width} />
 
         {/* Categories */}
         <Text style={styles.sectionTitle}>Shop by Category</Text>
@@ -133,7 +233,7 @@ export default function HomeScreen() {
         <View style={styles.stepsRow}>
           {[
             { icon: 'cart-outline', label: 'Select Items', color: '#E3F2FD' },
-            { icon: 'content-cut', label: 'Choose Cut', color: '#E8F5E9' },
+            { icon: 'knife', label: 'Choose Cut', color: '#E8F5E9' },
             { icon: 'package-variant-closed', label: 'We Pack', color: '#E8F5E9' },
             { icon: 'truck-delivery', label: 'Delivered!', color: '#FCE4EC' },
           ].map((step, i) => (
@@ -160,7 +260,10 @@ export default function HomeScreen() {
               <View style={styles.productBody}>
                 <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.productUnit}>{item.unit}</Text>
-                <Text style={styles.productPrice}>{'\u20B9'}{item.price}</Text>
+                <View style={styles.priceAddRow}>
+                  <Text style={styles.productPrice}>{'\u20B9'}{item.price}</Text>
+                  <AddToCartButton item={item} />
+                </View>
               </View>
             </TouchableOpacity>
           ))}
@@ -206,7 +309,10 @@ export default function HomeScreen() {
               <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
               <View style={styles.miniBody}>
                 <Text style={styles.miniName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
+                <View style={styles.miniPriceRow}>
+                  <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
+                  <AddToCartButton item={item} />
+                </View>
                 {item.tags && item.tags[0] && (
                   <View style={styles.miniTag}><Text style={styles.miniTagText}>{item.tags[0]}</Text></View>
                 )}
@@ -235,7 +341,10 @@ export default function HomeScreen() {
               <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
               <View style={styles.miniBody}>
                 <Text style={styles.miniName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
+                <View style={styles.miniPriceRow}>
+                  <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
+                  <AddToCartButton item={item} />
+                </View>
                 {item.tags && item.tags[0] && (
                   <View style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}>
                     <Text style={[styles.miniTagText, { color: '#1565C0' }]}>{item.tags[0]}</Text>
@@ -266,7 +375,10 @@ export default function HomeScreen() {
               <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
               <View style={styles.miniBody}>
                 <Text style={styles.miniName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
+                <View style={styles.miniPriceRow}>
+                  <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
+                  <AddToCartButton item={item} />
+                </View>
                 {item.tags && item.tags[0] && (
                   <View style={[styles.miniTag, { backgroundColor: '#FCE4EC' }]}>
                     <Text style={[styles.miniTagText, { color: '#C62828' }]}>{item.tags[0]}</Text>
@@ -285,7 +397,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingHorizontal: SPACING.base, paddingVertical: SPACING.md },
+  header: { paddingHorizontal: SPACING.base, paddingTop: SPACING.md, paddingBottom: SPACING.sm },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.text.primary },
   headerSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
@@ -304,20 +416,27 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: '#FFF', borderRadius: RADIUS.lg,
-    marginHorizontal: SPACING.base, marginTop: SPACING.sm,
-    paddingHorizontal: 14, paddingVertical: 12,
+    marginTop: SPACING.sm,
+    paddingHorizontal: 14, paddingVertical: 10,
     ...SHADOW.sm,
   },
-  scroll: { paddingBottom: 20 },
-  heroBanner: { marginHorizontal: SPACING.base, marginTop: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden' },
-  heroGrad: { padding: SPACING.base },
-  heroTitle: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 6 },
-  heroDesc: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 18, marginBottom: 12 },
-  heroBtn: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
-    backgroundColor: '#FFF', borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 8, gap: 4,
+  scroll: { paddingBottom: 80 },
+  offersSection: { marginTop: SPACING.sm, marginBottom: 4 },
+  offerCard: {
+    flexDirection: 'row', alignItems: 'center', borderRadius: RADIUS.lg,
+    padding: SPACING.base, minHeight: 110,
   },
-  heroBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  offerTitle: { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 4 },
+  offerDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 17 },
+  offerBtn: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
+    backgroundColor: '#FFF', borderRadius: RADIUS.full, paddingHorizontal: 14, paddingVertical: 6, gap: 4, marginTop: 10,
+  },
+  offerBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  offerIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
+  offerDots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 8 },
+  offerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.border },
+  offerDotActive: { width: 20, backgroundColor: COLORS.primary },
   sectionTitle: {
     fontSize: 17, fontWeight: '800', color: COLORS.text.primary,
     marginHorizontal: SPACING.base, marginTop: SPACING.lg, marginBottom: SPACING.md,
@@ -362,4 +481,14 @@ const styles = StyleSheet.create({
   miniPrice: { fontSize: 14, fontWeight: '800', color: COLORS.primary, marginTop: 2 },
   miniTag: { backgroundColor: '#E8F5E9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 },
   miniTagText: { fontSize: 9, fontWeight: '700', color: COLORS.green },
+  miniPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  priceAddRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  addBtn: {
+    backgroundColor: '#E8F5E9', borderRadius: 6, borderWidth: 1, borderColor: COLORS.primary,
+    paddingHorizontal: 10, paddingVertical: 3,
+  },
+  addBtnText: { fontSize: 11, fontWeight: '800', color: COLORS.primary },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', borderRadius: 6, borderWidth: 1, borderColor: COLORS.primary },
+  qtyBtn: { paddingHorizontal: 6, paddingVertical: 3 },
+  qtyText: { fontSize: 12, fontWeight: '800', color: COLORS.primary, minWidth: 18, textAlign: 'center' },
 });
