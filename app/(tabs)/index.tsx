@@ -96,7 +96,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* How It Works */}
-        <Text style={styles.sectionTitle}>How It Works</Text>
+        {/* <Text style={styles.sectionTitle}>How It Works</Text>
         <View style={styles.stepsRow}>
           {[
             { icon: 'cart-outline', label: 'Select Items', color: '#E3F2FD' },
@@ -109,7 +109,7 @@ export default function HomeScreen() {
               <Text style={styles.stepLabel}>{step.label}</Text>
             </View>
           ))}
-        </View>
+        </View> */}
 
         {/* Popular Items */}
         <Text style={styles.sectionTitle}>Popular Items</Text>

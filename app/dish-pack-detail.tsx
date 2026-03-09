@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
+import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { DISH_PACKS, PACK_SIZES, DEFAULT_PACK_SIZE } from '@/data/dishPacks';
 import { CUT_TYPE_OPTIONS, WEIGHT_OPTIONS, getCutFee } from '@/data/cutTypes';
@@ -13,6 +14,10 @@ import productsData from '@/data/products.json';
 import type { CutType, Product, RegionalVariant } from '@/types';
 
 const SPICE_COLORS = { mild: '#4CAF50', medium: '#FF9800', spicy: '#F44336' };
+
+function isYouTubeUrl(url: string): boolean {
+  return url.includes('youtube.com') || url.includes('youtu.be');
+}
 
 export default function DishPackDetailScreen() {
   const router = useRouter();
@@ -281,14 +286,24 @@ export default function DishPackDetailScreen() {
       </View>
 
       {/* Cooking Video Modal */}
-      <Modal visible={showVideo} animationType="slide" transparent onRequestClose={() => setShowVideo(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{pack.name} - Cooking Demo</Text>
-              <TouchableOpacity onPress={() => setShowVideo(false)}><Icon name="close" size={24} color={COLORS.text.primary} /></TouchableOpacity>
-            </View>
-            {pack.cookingVideoUrl && (
+      <Modal visible={showVideo} animationType="slide" onRequestClose={() => setShowVideo(false)}>
+        <SafeAreaView style={styles.modalFull}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{pack.name} - Cooking Demo</Text>
+            <TouchableOpacity onPress={() => setShowVideo(false)}><Icon name="close" size={24} color={COLORS.text.primary} /></TouchableOpacity>
+          </View>
+          {showVideo && pack.cookingVideoUrl && (
+            isYouTubeUrl(pack.cookingVideoUrl) ? (
+              <WebView
+                source={{ uri: pack.cookingVideoUrl }}
+                style={styles.webViewPlayer}
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
+                userAgent="Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+              />
+            ) : (
               <Video
                 source={{ uri: pack.cookingVideoUrl }}
                 style={styles.videoPlayer}
@@ -296,9 +311,9 @@ export default function DishPackDetailScreen() {
                 resizeMode={ResizeMode.CONTAIN}
                 shouldPlay
               />
-            )}
-          </View>
-        </View>
+            )
+          )}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -395,9 +410,9 @@ const styles = StyleSheet.create({
   addBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.green, borderRadius: RADIUS.full, paddingHorizontal: 20, paddingVertical: 14 },
   addBarBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: SPACING.base },
-  modalContent: { backgroundColor: '#FFF', borderRadius: RADIUS.xl, overflow: 'hidden' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.base },
+  modalFull: { flex: 1, backgroundColor: '#000' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.base, backgroundColor: '#FFF' },
   modalTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary },
-  videoPlayer: { width: '100%', height: 220 },
+  videoPlayer: { width: '100%', height: 260 },
+  webViewPlayer: { flex: 1 },
 });

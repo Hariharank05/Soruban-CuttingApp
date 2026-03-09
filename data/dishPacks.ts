@@ -20,7 +20,7 @@ export const DISH_PACKS: DishPack[] = [
       { productId: '7', quantity: 1 }, { productId: '21', quantity: 1 },
       { productId: '32', quantity: 1 }, { productId: '13', quantity: 1 },
     ],
-    cookingVideoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    cookingVideoUrl: 'https://youtube.com/shorts/-N-_H8iBZKw?si=5t2Khu4KbwS9JIqN',
     preparationSteps: [
       'Wash and cut all vegetables as per selected cut style',
       'Pressure cook toor dal with turmeric for 3-4 whistles',
