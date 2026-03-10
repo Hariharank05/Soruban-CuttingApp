@@ -1,0 +1,278 @@
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const LANG_KEY = '@app_language';
+
+export type LangCode = 'en' | 'ta' | 'te' | 'hi' | 'kn';
+
+export interface Language {
+  code: LangCode;
+  label: string;
+  nativeLabel: string;
+}
+
+export const LANGUAGES: Language[] = [
+  { code: 'en', label: 'English', nativeLabel: 'English' },
+  { code: 'ta', label: 'Tamil', nativeLabel: '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD' },
+  { code: 'te', label: 'Telugu', nativeLabel: '\u0C24\u0C46\u0C32\u0C41\u0C17\u0C41' },
+  { code: 'hi', label: 'Hindi', nativeLabel: '\u0939\u093F\u0928\u094D\u0926\u0940' },
+  { code: 'kn', label: 'Kannada', nativeLabel: '\u0C95\u0CA8\u0CCD\u0CA8\u0CA1' },
+];
+
+// Translation strings for common UI elements
+const TRANSLATIONS: Record<LangCode, Record<string, string>> = {
+  en: {
+    home: 'Home',
+    cart: 'Cart',
+    orders: 'Orders',
+    profile: 'Profile',
+    settings: 'Settings',
+    search: 'Search',
+    checkout: 'Checkout',
+    placeOrder: 'Place Order',
+    reorder: 'Reorder',
+    addToCart: 'Add to Cart',
+    addMore: 'Add More',
+    specialInstructions: 'Special Instructions',
+    deliveryAddress: 'Delivery Address',
+    orderNote: 'Order Note',
+    deliveryTime: 'Delivery Time',
+    payment: 'Payment',
+    billSummary: 'Bill Summary',
+    total: 'Total',
+    myOrders: 'My Orders',
+    orderTimeline: 'Order Timeline',
+    orderItems: 'Order Items',
+    orderDetails: 'Order Details',
+    chatWithShop: 'Chat with Shop',
+    notifications: 'Notifications',
+    darkMode: 'Dark Mode',
+    language: 'Language',
+    dishPacks: 'Dish Packs',
+    selectWeight: 'Select Weight',
+    howCut: 'How do you want it cut?',
+    quantity: 'Quantity',
+    healthBenefits: 'Health Benefits',
+    deliverNow: 'Deliver Now',
+    schedule: 'Schedule',
+    subscribe: 'Subscribe',
+    oneTime: 'One-time',
+    cashOnDelivery: 'Cash on Delivery',
+    upiPayment: 'UPI Payment',
+    viewOrder: 'View Order',
+    noOrders: 'No orders yet',
+    orderPlaced: 'Order Placed!',
+    logout: 'Logout',
+  },
+  ta: {
+    home: '\u0BAE\u0BC1\u0B95\u0BAA\u0BCD\u0BAA\u0BC1',
+    cart: '\u0B95\u0BC2\u0B9F\u0BC8',
+    orders: '\u0B86\u0BA3\u0BC8\u0B95\u0BB3\u0BCD',
+    profile: '\u0BAA\u0BCD\u0BB0\u0BCA\u0BAA\u0BC8\u0BB2\u0BCD',
+    settings: '\u0B85\u0BAE\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD',
+    search: '\u0BA4\u0BC7\u0B9F\u0BC1',
+    checkout: '\u0B9A\u0BC6\u0B95\u0BCD\u0B85\u0BB5\u0BC1\u0B9F\u0BCD',
+    placeOrder: '\u0B86\u0BA3\u0BC8 \u0B9A\u0BC6\u0BAF\u0BCD',
+    reorder: '\u0BAE\u0BC0\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD \u0B86\u0BA3\u0BC8',
+    addToCart: '\u0B95\u0BC2\u0B9F\u0BC8\u0BAF\u0BBF\u0BB2\u0BCD \u0B9A\u0BC7\u0BB0\u0BCD',
+    addMore: '\u0BAE\u0BC7\u0BB2\u0BC1\u0BAE\u0BCD \u0B9A\u0BC7\u0BB0\u0BCD',
+    specialInstructions: '\u0B9A\u0BBF\u0BB1\u0BAA\u0BCD\u0BAA\u0BC1 \u0B95\u0BC1\u0BB1\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD',
+    deliveryAddress: '\u0B9F\u0BC6\u0BB2\u0BBF\u0BB5\u0BB0\u0BBF \u0BAE\u0BC1\u0B95\u0BB5\u0BB0\u0BBF',
+    orderNote: '\u0B86\u0BA3\u0BC8 \u0B95\u0BC1\u0BB1\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1',
+    deliveryTime: '\u0B9F\u0BC6\u0BB2\u0BBF\u0BB5\u0BB0\u0BBF \u0BA8\u0BC7\u0BB0\u0BAE\u0BCD',
+    payment: '\u0BAA\u0BA3\u0BAE\u0BCD',
+    billSummary: '\u0BAA\u0BBF\u0BB2\u0BCD \u0B9A\u0BC1\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BAE\u0BCD',
+    total: '\u0BAE\u0BCA\u0BA4\u0BCD\u0BA4\u0BAE\u0BCD',
+    myOrders: '\u0B8E\u0BA9\u0BCD \u0B86\u0BA3\u0BC8\u0B95\u0BB3\u0BCD',
+    orderTimeline: '\u0B86\u0BA3\u0BC8 \u0BA8\u0BBF\u0BB2\u0BC8',
+    orderItems: '\u0B86\u0BA3\u0BC8 \u0BAA\u0BCA\u0BB0\u0BC1\u0B9F\u0BCD\u0B95\u0BB3\u0BCD',
+    orderDetails: '\u0B86\u0BA3\u0BC8 \u0BB5\u0BBF\u0BB5\u0BB0\u0B99\u0BCD\u0B95\u0BB3\u0BCD',
+    chatWithShop: '\u0B95\u0B9F\u0BC8\u0BAF\u0BC1\u0B9F\u0BA9\u0BCD \u0B9A\u0BBE\u0B9F\u0BCD',
+    notifications: '\u0B85\u0BB1\u0BBF\u0BB5\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD',
+    darkMode: '\u0B87\u0BB0\u0BC1\u0B9F\u0BCD\u0B9F\u0BC1 \u0BAE\u0BCB\u0B9F\u0BCD',
+    language: '\u0BAE\u0BCA\u0BB4\u0BBF',
+    dishPacks: '\u0B89\u0BA3\u0BB5\u0BC1 \u0BAA\u0BC7\u0B95\u0BCD\u0B95\u0BC1\u0B95\u0BB3\u0BCD',
+    selectWeight: '\u0B8E\u0B9F\u0BC8\u0BAF\u0BC8 \u0BA4\u0BC7\u0BB0\u0BCD\u0BB5\u0BC1',
+    howCut: '\u0B8E\u0BAA\u0BCD\u0BAA\u0B9F\u0BBF \u0BB5\u0BC6\u0B9F\u0BCD\u0B9F \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD?',
+    quantity: '\u0B8E\u0BA3\u0BCD\u0BA3\u0BBF\u0B95\u0BCD\u0B95\u0BC8',
+    healthBenefits: '\u0B86\u0BB0\u0BCB\u0B95\u0BCD\u0B95\u0BBF\u0BAF \u0BAA\u0BAF\u0BA9\u0BCD\u0B95\u0BB3\u0BCD',
+    deliverNow: '\u0B87\u0BAA\u0BCD\u0BAA\u0BCB\u0BA4\u0BC7 \u0B9F\u0BC6\u0BB2\u0BBF\u0BB5\u0BB0\u0BBF',
+    schedule: '\u0BA4\u0BBF\u0B9F\u0BCD\u0B9F\u0BAE\u0BBF\u0B9F\u0BC1',
+    subscribe: '\u0B9A\u0BA8\u0BCD\u0BA4\u0BBE',
+    oneTime: '\u0B92\u0BB0\u0BC1\u0BAE\u0BC1\u0BB1\u0BC8',
+    cashOnDelivery: '\u0B95\u0BC8\u0BAF\u0BBF\u0BB2\u0BCD \u0BAA\u0BA3\u0BAE\u0BCD',
+    upiPayment: 'UPI \u0BAA\u0BA3\u0BAE\u0BCD',
+    viewOrder: '\u0B86\u0BA3\u0BC8 \u0BAA\u0BBE\u0BB0\u0BCD',
+    noOrders: '\u0B86\u0BA3\u0BC8\u0B95\u0BB3\u0BCD \u0B87\u0BB2\u0BCD\u0BB2\u0BC8',
+    orderPlaced: '\u0B86\u0BA3\u0BC8 \u0BB5\u0BC8\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1!',
+    logout: '\u0BB5\u0BC6\u0BB3\u0BBF\u0BAF\u0BC7\u0BB1\u0BC1',
+  },
+  te: {
+    home: '\u0C39\u0C4B\u0C2E\u0C4D',
+    cart: '\u0C15\u0C3E\u0C30\u0C4D\u0C1F\u0C4D',
+    orders: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D\u0C32\u0C41',
+    profile: '\u0C2A\u0C4D\u0C30\u0C4A\u0C2B\u0C48\u0C32\u0C4D',
+    settings: '\u0C38\u0C46\u0C1F\u0C4D\u0C1F\u0C3F\u0C02\u0C17\u0C4D\u0C38\u0C4D',
+    search: '\u0C35\u0C46\u0C24\u0C15\u0C41',
+    checkout: '\u0C1A\u0C46\u0C15\u0C4D\u0C05\u0C35\u0C41\u0C1F\u0C4D',
+    placeOrder: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F',
+    reorder: '\u0C2E\u0C33\u0C4D\u0C33\u0C40 \u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D',
+    addToCart: '\u0C15\u0C3E\u0C30\u0C4D\u0C1F\u0C4D\u0C15\u0C41 \u0C1A\u0C47\u0C30\u0C4D\u0C1A\u0C02\u0C21\u0C3F',
+    addMore: '\u0C2E\u0C30\u0C3F\u0C28\u0C4D\u0C28\u0C3F \u0C1A\u0C47\u0C30\u0C4D\u0C1A\u0C02\u0C21\u0C3F',
+    specialInstructions: '\u0C2A\u0C4D\u0C30\u0C24\u0C4D\u0C2F\u0C47\u0C15 \u0C38\u0C42\u0C1A\u0C28\u0C32\u0C41',
+    deliveryAddress: '\u0C21\u0C46\u0C32\u0C3F\u0C35\u0C30\u0C40 \u0C1A\u0C3F\u0C30\u0C41\u0C28\u0C3E\u0C2E\u0C3E',
+    orderNote: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C28\u0C4B\u0C1F\u0C4D',
+    deliveryTime: '\u0C21\u0C46\u0C32\u0C3F\u0C35\u0C30\u0C40 \u0C38\u0C2E\u0C2F\u0C02',
+    payment: '\u0C1A\u0C46\u0C32\u0C4D\u0C32\u0C3F\u0C02\u0C2A\u0C41',
+    billSummary: '\u0C2C\u0C3F\u0C32\u0C4D \u0C38\u0C3E\u0C30\u0C3E\u0C02\u0C36\u0C02',
+    total: '\u0C2E\u0C4A\u0C24\u0C4D\u0C24\u0C02',
+    myOrders: '\u0C28\u0C3E \u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D\u0C32\u0C41',
+    orderTimeline: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C1F\u0C48\u0C2E\u0C4D\u200C\u0C32\u0C48\u0C28\u0C4D',
+    orderItems: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C05\u0C02\u0C36\u0C3E\u0C32\u0C41',
+    orderDetails: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C35\u0C3F\u0C35\u0C30\u0C3E\u0C32\u0C41',
+    chatWithShop: '\u0C37\u0C3E\u0C2A\u0C4D\u200C\u0C24\u0C4B \u0C1A\u0C3E\u0C1F\u0C4D',
+    notifications: '\u0C28\u0C4B\u0C1F\u0C3F\u0C2B\u0C3F\u0C15\u0C47\u0C37\u0C28\u0C4D\u0C32\u0C41',
+    darkMode: '\u0C21\u0C3E\u0C30\u0C4D\u0C15\u0C4D \u0C2E\u0C4B\u0C21\u0C4D',
+    language: '\u0C2D\u0C3E\u0C37',
+    dishPacks: '\u0C35\u0C02\u0C1F\u0C15 \u0C2A\u0C4D\u0C2F\u0C3E\u0C15\u0C4D\u0C32\u0C41',
+    selectWeight: '\u0C2C\u0C30\u0C41\u0C35\u0C41 \u0C0E\u0C02\u0C1A\u0C41\u0C15\u0C4B\u0C02\u0C21\u0C3F',
+    howCut: '\u0C0E\u0C32\u0C3E \u0C15\u0C1F\u0C4D \u0C1A\u0C47\u0C2F\u0C3E\u0C32\u0C3F?',
+    quantity: '\u0C2A\u0C30\u0C3F\u0C2E\u0C3E\u0C23\u0C02',
+    healthBenefits: '\u0C06\u0C30\u0C4B\u0C17\u0C4D\u0C2F \u0C2A\u0C4D\u0C30\u0C2F\u0C4B\u0C1C\u0C28\u0C3E\u0C32\u0C41',
+    deliverNow: '\u0C07\u0C2A\u0C4D\u0C2A\u0C41\u0C21\u0C47 \u0C21\u0C46\u0C32\u0C3F\u0C35\u0C30\u0C40',
+    schedule: '\u0C37\u0C46\u0C21\u0C4D\u0C2F\u0C42\u0C32\u0C4D',
+    subscribe: '\u0C38\u0C2C\u0C4D\u0C38\u0C4D\u0C15\u0C4D\u0C30\u0C48\u0C2C\u0C4D',
+    oneTime: '\u0C12\u0C15\u0C4D\u0C15\u0C38\u0C3E\u0C30\u0C3F',
+    cashOnDelivery: '\u0C15\u0C4D\u0C2F\u0C3E\u0C37\u0C4D \u0C06\u0C28\u0C4D \u0C21\u0C46\u0C32\u0C3F\u0C35\u0C30\u0C40',
+    upiPayment: 'UPI \u0C1A\u0C46\u0C32\u0C4D\u0C32\u0C3F\u0C02\u0C2A\u0C41',
+    viewOrder: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C1A\u0C42\u0C21\u0C02\u0C21\u0C3F',
+    noOrders: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D\u0C32\u0C41 \u0C32\u0C47\u0C35\u0C41',
+    orderPlaced: '\u0C06\u0C30\u0C4D\u0C21\u0C30\u0C4D \u0C2A\u0C46\u0C1F\u0C4D\u0C1F\u0C3E\u0C30\u0C41!',
+    logout: '\u0C32\u0C3E\u0C17\u0C4D\u0C05\u0C35\u0C41\u0C1F\u0C4D',
+  },
+  hi: {
+    home: '\u0939\u094B\u092E',
+    cart: '\u0915\u093E\u0930\u094D\u091F',
+    orders: '\u0911\u0930\u094D\u0921\u0930',
+    profile: '\u092A\u094D\u0930\u094B\u092B\u093E\u0907\u0932',
+    settings: '\u0938\u0947\u091F\u093F\u0902\u0917\u094D\u0938',
+    search: '\u0916\u094B\u091C\u0947\u0902',
+    checkout: '\u091A\u0947\u0915\u0906\u0909\u091F',
+    placeOrder: '\u0911\u0930\u094D\u0921\u0930 \u0915\u0930\u0947\u0902',
+    reorder: '\u092B\u093F\u0930 \u0938\u0947 \u0911\u0930\u094D\u0921\u0930',
+    addToCart: '\u0915\u093E\u0930\u094D\u091F \u092E\u0947\u0902 \u0921\u093E\u0932\u0947\u0902',
+    addMore: '\u0914\u0930 \u0921\u093E\u0932\u0947\u0902',
+    specialInstructions: '\u0935\u093F\u0936\u0947\u0937 \u0928\u093F\u0930\u094D\u0926\u0947\u0936',
+    deliveryAddress: '\u0921\u093F\u0932\u0940\u0935\u0930\u0940 \u092A\u0924\u093E',
+    orderNote: '\u0911\u0930\u094D\u0921\u0930 \u0928\u094B\u091F',
+    deliveryTime: '\u0921\u093F\u0932\u0940\u0935\u0930\u0940 \u0938\u092E\u092F',
+    payment: '\u092D\u0941\u0917\u0924\u093E\u0928',
+    billSummary: '\u092C\u093F\u0932 \u0938\u093E\u0930\u093E\u0902\u0936',
+    total: '\u0915\u0941\u0932',
+    myOrders: '\u092E\u0947\u0930\u0947 \u0911\u0930\u094D\u0921\u0930',
+    orderTimeline: '\u0911\u0930\u094D\u0921\u0930 \u091F\u093E\u0907\u092E\u0932\u093E\u0907\u0928',
+    orderItems: '\u0911\u0930\u094D\u0921\u0930 \u0906\u0907\u091F\u092E',
+    orderDetails: '\u0911\u0930\u094D\u0921\u0930 \u0935\u093F\u0935\u0930\u0923',
+    chatWithShop: '\u0926\u0941\u0915\u093E\u0928 \u0938\u0947 \u091A\u0948\u091F',
+    notifications: '\u0938\u0942\u091A\u0928\u093E\u090F\u0902',
+    darkMode: '\u0921\u093E\u0930\u094D\u0915 \u092E\u094B\u0921',
+    language: '\u092D\u093E\u0937\u093E',
+    dishPacks: '\u0921\u093F\u0936 \u092A\u0948\u0915',
+    selectWeight: '\u0935\u091C\u0928 \u091A\u0941\u0928\u0947\u0902',
+    howCut: '\u0915\u0948\u0938\u0947 \u0915\u091F\u0935\u093E\u0928\u093E \u091A\u093E\u0939\u0924\u0947 \u0939\u0948\u0902?',
+    quantity: '\u092E\u093E\u0924\u094D\u0930\u093E',
+    healthBenefits: '\u0938\u094D\u0935\u093E\u0938\u094D\u0925\u094D\u092F \u0932\u093E\u092D',
+    deliverNow: '\u0905\u092D\u0940 \u0921\u093F\u0932\u0940\u0935\u0930\u0940',
+    schedule: '\u0936\u0947\u0921\u094D\u092F\u0942\u0932',
+    subscribe: '\u0938\u092C\u094D\u0938\u094D\u0915\u094D\u0930\u093E\u0907\u092C',
+    oneTime: '\u090F\u0915 \u092C\u093E\u0930',
+    cashOnDelivery: '\u0915\u0948\u0936 \u0911\u0928 \u0921\u093F\u0932\u0940\u0935\u0930\u0940',
+    upiPayment: 'UPI \u092D\u0941\u0917\u0924\u093E\u0928',
+    viewOrder: '\u0911\u0930\u094D\u0921\u0930 \u0926\u0947\u0916\u0947\u0902',
+    noOrders: '\u0905\u092D\u0940 \u0915\u094B\u0908 \u0911\u0930\u094D\u0921\u0930 \u0928\u0939\u0940\u0902',
+    orderPlaced: '\u0911\u0930\u094D\u0921\u0930 \u0939\u094B \u0917\u092F\u093E!',
+    logout: '\u0932\u0949\u0917\u0906\u0909\u091F',
+  },
+  kn: {
+    home: '\u0CAE\u0CA8\u0CC6',
+    cart: '\u0C95\u0CBE\u0CB0\u0CCD\u0C9F\u0CCD',
+    orders: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD\u200C\u0C97\u0CB3\u0CC1',
+    profile: '\u0CAA\u0CCD\u0CB0\u0CCA\u0CAB\u0CC8\u0CB2\u0CCD',
+    settings: '\u0CB8\u0CC6\u0C9F\u0CCD\u0C9F\u0CBF\u0C82\u0C97\u0CCD\u0CB8\u0CCD',
+    search: '\u0CB9\u0CC1\u0CA1\u0CC1\u0C95\u0CBF',
+    checkout: '\u0C9A\u0CC6\u0C95\u0CCD\u0C85\u0CB5\u0CC1\u0C9F\u0CCD',
+    placeOrder: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0CAE\u0CBE\u0CA1\u0CBF',
+    reorder: '\u0CAE\u0CA4\u0CCD\u0CA4\u0CC6 \u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD',
+    addToCart: '\u0C95\u0CBE\u0CB0\u0CCD\u0C9F\u0CCD\u0C97\u0CC6 \u0CB8\u0CC7\u0CB0\u0CBF\u0CB8\u0CBF',
+    addMore: '\u0C87\u0CA8\u0CCD\u0CA8\u0CC2 \u0CB8\u0CC7\u0CB0\u0CBF\u0CB8\u0CBF',
+    specialInstructions: '\u0CB5\u0CBF\u0CB6\u0CC7\u0CB7 \u0CB8\u0CC2\u0C9A\u0CA8\u0CC6\u0C97\u0CB3\u0CC1',
+    deliveryAddress: '\u0CA1\u0CC6\u0CB2\u0CBF\u0CB5\u0CB0\u0CBF \u0CB5\u0CBF\u0CB3\u0CBE\u0CB8',
+    orderNote: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0C9F\u0CBF\u0CAA\u0CCD\u0CAA\u0CA3\u0CBF',
+    deliveryTime: '\u0CA1\u0CC6\u0CB2\u0CBF\u0CB5\u0CB0\u0CBF \u0CB8\u0CAE\u0CAF',
+    payment: '\u0CAA\u0CBE\u0CB5\u0CA4\u0CBF',
+    billSummary: '\u0CAC\u0CBF\u0CB2\u0CCD \u0CB8\u0CBE\u0CB0\u0CBE\u0C82\u0CB6',
+    total: '\u0C92\u0C9F\u0CCD\u0C9F\u0CC1',
+    myOrders: '\u0CA8\u0CA8\u0CCD\u0CA8 \u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD\u200C\u0C97\u0CB3\u0CC1',
+    orderTimeline: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0C9F\u0CC8\u0CAE\u0CCD\u200C\u0CB2\u0CC8\u0CA8\u0CCD',
+    orderItems: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0CB5\u0CB8\u0CCD\u0CA4\u0CC1\u0C97\u0CB3\u0CC1',
+    orderDetails: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0CB5\u0CBF\u0CB5\u0CB0\u0C97\u0CB3\u0CC1',
+    chatWithShop: '\u0C85\u0C82\u0C97\u0CA1\u0CBF\u0CAF\u0CCA\u0C82\u0CA6\u0CBF\u0C97\u0CC6 \u0C9A\u0CBE\u0C9F\u0CCD',
+    notifications: '\u0C85\u0CA7\u0CBF\u0CB8\u0CC2\u0C9A\u0CA8\u0CC6\u0C97\u0CB3\u0CC1',
+    darkMode: '\u0CA1\u0CBE\u0CB0\u0CCD\u0C95\u0CCD \u0CAE\u0CCB\u0CA1\u0CCD',
+    language: '\u0CAD\u0CBE\u0CB7\u0CC6',
+    dishPacks: '\u0CA1\u0CBF\u0CB6\u0CCD \u0CAA\u0CCD\u0CAF\u0CBE\u0C95\u0CCD\u200C\u0C97\u0CB3\u0CC1',
+    selectWeight: '\u0CA4\u0CC2\u0C95 \u0C86\u0CAF\u0CCD\u0C95\u0CC6 \u0CAE\u0CBE\u0CA1\u0CBF',
+    howCut: '\u0CB9\u0CC7\u0C97\u0CC6 \u0C95\u0CA4\u0CCD\u0CA4\u0CB0\u0CBF\u0CB8\u0CAC\u0CC7\u0C95\u0CC1?',
+    quantity: '\u0CAA\u0CCD\u0CB0\u0CAE\u0CBE\u0CA3',
+    healthBenefits: '\u0C86\u0CB0\u0CCB\u0C97\u0CCD\u0CAF \u0CAA\u0CCD\u0CB0\u0CAF\u0CCB\u0C9C\u0CA8\u0C97\u0CB3\u0CC1',
+    deliverNow: '\u0C88\u0C97 \u0CA1\u0CC6\u0CB2\u0CBF\u0CB5\u0CB0\u0CBF',
+    schedule: '\u0CB6\u0CC6\u0CA1\u0CCD\u0CAF\u0CC2\u0CB2\u0CCD',
+    subscribe: '\u0C9A\u0C82\u0CA6\u0CBE',
+    oneTime: '\u0C92\u0C82\u0CA6\u0CC1 \u0CAC\u0CBE\u0CB0\u0CBF',
+    cashOnDelivery: '\u0C95\u0CCD\u0CAF\u0CBE\u0CB6\u0CCD \u0C86\u0CA8\u0CCD \u0CA1\u0CC6\u0CB2\u0CBF\u0CB5\u0CB0\u0CBF',
+    upiPayment: 'UPI \u0CAA\u0CBE\u0CB5\u0CA4\u0CBF',
+    viewOrder: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0CA8\u0CCB\u0CA1\u0CBF',
+    noOrders: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD\u200C\u0C97\u0CB3\u0CC1 \u0C87\u0CB2\u0CCD\u0CB2',
+    orderPlaced: '\u0C86\u0CB0\u0CCD\u0CA1\u0CB0\u0CCD \u0C86\u0CAF\u0CBF\u0CA4\u0CC1!',
+    logout: '\u0CB2\u0CBE\u0C97\u0CCD\u0C85\u0CB5\u0CC1\u0C9F\u0CCD',
+  },
+};
+
+interface LanguageContextType {
+  language: LangCode;
+  setLanguage: (lang: LangCode) => void;
+  t: (key: string) => string;
+}
+
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'en',
+  setLanguage: () => {},
+  t: (key: string) => key,
+});
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<LangCode>('en');
+
+  useEffect(() => {
+    AsyncStorage.getItem(LANG_KEY).then(raw => {
+      if (raw && LANGUAGES.some(l => l.code === raw)) {
+        setLanguageState(raw as LangCode);
+      }
+    });
+  }, []);
+
+  const setLanguage = useCallback((lang: LangCode) => {
+    setLanguageState(lang);
+    AsyncStorage.setItem(LANG_KEY, lang);
+  }, []);
+
+  const t = useCallback((key: string) => {
+    return TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || key;
+  }, [language]);
+
+  const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t]);
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+export const useLanguage = () => useContext(LanguageContext);

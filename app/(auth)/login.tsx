@@ -9,10 +9,12 @@ import { useRouter } from 'expo-router';
 import { COLORS, RADIUS, SPACING, SHADOW } from '@/src/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
+  const themed = useThemedStyles();
   const [phone, setPhone] = useState('');
 
   const handleSendOTP = () => {
@@ -31,29 +33,29 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={COLORS.gradient.header} style={styles.heroSection}>
+          <LinearGradient colors={themed.headerGradient} style={styles.heroSection}>
             <TouchableOpacity onPress={() => router.back()} style={styles.back}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
             <View style={styles.heroBg}>
               <Icon name="basket" size={52} color={COLORS.primary} />
-              <Text style={styles.heroTitle}>Customer Login</Text>
+              <Text style={[styles.heroTitle, themed.textPrimary]}>Customer Login</Text>
               <Text style={styles.heroSub}>Enter your mobile number to continue</Text>
             </View>
           </LinearGradient>
 
-          <View style={styles.form}>
+          <View style={[styles.form, themed.card]}>
             <Text style={styles.label}>Mobile Number</Text>
-            <View style={styles.inputRow}>
+            <View style={[styles.inputRow, themed.inputBg]}>
               <View style={styles.prefix}>
                 <Text style={styles.prefixText}>{'\ud83c\uddee\ud83c\uddf3'} +91</Text>
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, themed.textPrimary]}
                 placeholder="Enter 10-digit number"
                 placeholderTextColor={COLORS.text.muted}
                 keyboardType="phone-pad"

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import productsData from '@/data/products.json';
 
 const FAVORITE_IDS = ['1', '11', '23', '4', '8'];
@@ -12,10 +13,11 @@ const favorites = productsData.filter(p => FAVORITE_IDS.includes(p.id));
 
 export default function FavoritesScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
 
   const renderItem = ({ item }: { item: typeof productsData[0] }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, themed.card]}
       activeOpacity={0.85}
       onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
     >
@@ -34,15 +36,15 @@ export default function FavoritesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Favorites</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Favorites</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>

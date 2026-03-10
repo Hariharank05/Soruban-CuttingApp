@@ -5,8 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useOrders } from '@/context/OrderContext';
+import { useCart } from '@/context/CartContext';
 import { getCutLabel } from '@/data/cutTypes';
+import type { Product } from '@/types';
 
 type ChatMsg = { id: string; text: string; sender: 'user' | 'shop'; time: string };
 
@@ -17,8 +20,10 @@ const STATUS_ICONS: Record<string, string> = {
 
 export default function OrderDetailScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { orders } = useOrders();
+  const { addToCart } = useCart();
   const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -48,6 +53,14 @@ export default function OrderDetailScreen() {
     }, 1500);
   };
 
+  const handleReorder = () => {
+    if (!order) return;
+    order.items.forEach(item => {
+      addToCart(item as unknown as Product, item.quantity, item.selectedWeight, item.cutType, item.specialInstructions);
+    });
+    router.push('/(tabs)/cart');
+  };
+
   if (!order) return <SafeAreaView style={styles.safe}><Text style={{ textAlign: 'center', marginTop: 60 }}>Order not found</Text></SafeAreaView>;
 
   const date = new Date(order.createdAt);
@@ -55,13 +68,13 @@ export default function OrderDetailScreen() {
   const timeStr = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Icon name="arrow-left" size={24} color={COLORS.text.primary} /></TouchableOpacity>
-            <Text style={styles.headerTitle}>Order #{order.id}</Text>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Icon name="arrow-left" size={24} color={themed.colors.text.primary} /></TouchableOpacity>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Order #{order.id}</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>
@@ -108,8 +121,8 @@ export default function OrderDetailScreen() {
         )}
 
         {/* Timeline */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Order Timeline</Text>
+        <View style={[styles.sectionCard, themed.card]}>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Order Timeline</Text>
           {order.timeline?.map((step, i) => (
             <View key={i} style={styles.timelineRow}>
               <View style={styles.timelineDotCol}>
@@ -128,8 +141,8 @@ export default function OrderDetailScreen() {
         </View>
 
         {/* Items */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Order Items ({order.items.length})</Text>
+        <View style={[styles.sectionCard, themed.card]}>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Order Items ({order.items.length})</Text>
           {order.items.map((item, idx) => (
             <View key={idx} style={styles.orderItem}>
               <View style={{ flex: 1 }}>
@@ -143,8 +156,8 @@ export default function OrderDetailScreen() {
         </View>
 
         {/* Details */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Order Details</Text>
+        <View style={[styles.sectionCard, themed.card]}>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Order Details</Text>
           {[
             ['Order ID', `#${order.id}`], ['Placed on', `${dateStr} at ${timeStr}`],
             ['Delivery Slot', order.deliverySlot], ['Address', order.deliveryAddress],
@@ -155,18 +168,24 @@ export default function OrderDetailScreen() {
         </View>
 
         {/* Bill */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Bill Summary</Text>
+        <View style={[styles.sectionCard, themed.card]}>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Bill Summary</Text>
           <View style={styles.billRow}><Text style={styles.billLabel}>Items Total</Text><Text style={styles.billValue}>{'\u20B9'}{order.subtotal}</Text></View>
           {order.cuttingCharges > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>{'\uD83D\uDD2A'} Cutting Charges</Text><Text style={[styles.billValue, { color: COLORS.primary }]}>{'\u20B9'}{order.cuttingCharges}</Text></View>}
           <View style={styles.billRow}><Text style={styles.billLabel}>Delivery Fee</Text><Text style={styles.billValue}>{'\u20B9'}{order.deliveryFee}</Text></View>
           <View style={[styles.billRow, styles.billTotal]}><Text style={styles.billTotalLabel}>Total Paid</Text><Text style={styles.billTotalValue}>{'\u20B9'}{order.total}</Text></View>
         </View>
+        {/* Reorder */}
+        <TouchableOpacity style={styles.reorderBtn} onPress={handleReorder}>
+          <Icon name="cart-plus" size={20} color="#FFF" />
+          <Text style={styles.reorderBtnText}>Reorder This</Text>
+        </TouchableOpacity>
+
         {/* Chat with Shop */}
-        <View style={styles.chatCard}>
+        <View style={[styles.chatCard, themed.card]}>
           <View style={styles.chatHeader}>
-            <Icon name="chat-outline" size={20} color={COLORS.text.primary} />
-            <Text style={styles.chatTitle}>Chat with Shop</Text>
+            <Icon name="chat-outline" size={20} color={themed.colors.text.primary} />
+            <Text style={[styles.chatTitle, themed.textPrimary]}>Chat with Shop</Text>
             <View style={styles.chatOnlineDot} />
           </View>
           <View style={styles.chatMessages}>
@@ -183,7 +202,7 @@ export default function OrderDetailScreen() {
           </View>
           <View style={styles.chatInputRow}>
             <TextInput
-              style={styles.chatInput}
+              style={[styles.chatInput, themed.inputBg]}
               value={inputText}
               onChangeText={setInputText}
               placeholder="Type a message..."
@@ -248,6 +267,8 @@ const styles = StyleSheet.create({
   billTotal: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 6, paddingTop: 10 },
   billTotalLabel: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
   billTotalValue: { fontSize: 17, fontWeight: '800', color: COLORS.primary },
+  reorderBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingVertical: 14, marginBottom: SPACING.md },
+  reorderBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
   chatCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
   chatHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md },
   chatTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text.primary, marginLeft: 8, flex: 1 },

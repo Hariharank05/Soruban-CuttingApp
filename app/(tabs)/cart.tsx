@@ -8,11 +8,13 @@ import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useCart } from '@/context/CartContext';
 import { useScrollContext } from '@/context/ScrollContext';
 import { getCutLabel, getCutFee } from '@/data/cutTypes';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 export default function CartScreen() {
   const router = useRouter();
   const { cartItems, updateQuantity, removeFromCart, getSubtotal, getCuttingTotal, getItemCount } = useCart();
   const { handleScroll } = useScrollContext();
+  const themed = useThemedStyles();
 
   const subtotal = getSubtotal();
   const cuttingTotal = getCuttingTotal();
@@ -31,7 +33,7 @@ export default function CartScreen() {
   };
 
   const renderItem = ({ item }: { item: typeof cartItems[0] }) => (
-    <View style={styles.itemCard}>
+    <View style={[styles.itemCard, themed.card]}>
       <View style={styles.itemImageWrap}>
         <Image source={{ uri: item.image }} style={styles.itemImage} resizeMode="cover" />
       </View>
@@ -65,9 +67,9 @@ export default function CartScreen() {
 
   if (cartItems.length === 0) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
         <StatusBar barStyle="dark-content" />
-        <LinearGradient colors={COLORS.gradient.header} style={styles.header}><Text style={styles.headerTitle}>{'\uD83D\uDED2'} Your Cart</Text></LinearGradient>
+        <LinearGradient colors={themed.headerGradient} style={styles.header}><Text style={[styles.headerTitle, themed.textPrimary]}>{'\uD83D\uDED2'} Your Cart</Text></LinearGradient>
         <View style={styles.emptyContainer}>
           <Icon name="cart-outline" size={64} color={COLORS.text.muted} />
           <Text style={styles.emptyTitle}>Your cart is empty</Text>
@@ -81,16 +83,16 @@ export default function CartScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}><Text style={styles.headerTitle}>{'\uD83D\uDED2'} Your Cart ({getItemCount()} items)</Text></LinearGradient>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}><Text style={[styles.headerTitle, themed.textPrimary]}>{'\uD83D\uDED2'} Your Cart ({getItemCount()} items)</Text></LinearGradient>
       <FlatList
         data={cartItems} keyExtractor={(item, idx) => `${item.id}_${idx}`} renderItem={renderItem}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
         onScroll={handleScroll} scrollEventThrottle={16}
         ListFooterComponent={
-          <View style={styles.billCard}>
-            <Text style={styles.billTitle}>Bill Summary</Text>
+          <View style={[styles.billCard, themed.card]}>
+            <Text style={[styles.billTitle, themed.textPrimary]}>Bill Summary</Text>
             <View style={styles.billRow}><Text style={styles.billLabel}>Items Total</Text><Text style={styles.billValue}>{'\u20B9'}{subtotal - cuttingTotal}</Text></View>
             {cuttingTotal > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>{'\uD83D\uDD2A'} Cutting Charges</Text><Text style={[styles.billValue, { color: COLORS.primary }]}>{'\u20B9'}{cuttingTotal}</Text></View>}
             <View style={styles.billRow}><Text style={styles.billLabel}>Delivery Fee</Text><Text style={styles.billValue}>{'\u20B9'}{deliveryFee}</Text></View>
@@ -98,9 +100,9 @@ export default function CartScreen() {
           </View>
         }
       />
-      <View style={styles.checkoutBar}>
+      <View style={[styles.checkoutBar, themed.card]}>
         <View>
-          <Text style={styles.checkoutTotal}>{'\u20B9'}{total}</Text>
+          <Text style={[styles.checkoutTotal, themed.textPrimary]}>{'\u20B9'}{total}</Text>
           <Text style={styles.checkoutSub}>incl. cutting charges</Text>
         </View>
         <TouchableOpacity style={styles.checkoutBtn} onPress={() => router.push('/checkout')}>

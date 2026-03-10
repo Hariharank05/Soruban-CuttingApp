@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 interface Address {
   id: string;
@@ -21,6 +22,7 @@ const INITIAL_ADDRESSES: Address[] = [
 
 export default function AddressesScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
   const [showAdd, setShowAdd] = useState(false);
   const [newLabel, setNewLabel] = useState('');
@@ -44,7 +46,7 @@ export default function AddressesScreen() {
   };
 
   const renderAddress = ({ item }: { item: Address }) => (
-    <View style={[styles.addressCard, item.isDefault && styles.addressCardDefault]}>
+    <View style={[styles.addressCard, themed.card, item.isDefault && styles.addressCardDefault]}>
       <View style={styles.addressHeader}>
         <View style={[styles.addressIcon, { backgroundColor: item.isDefault ? '#E8F5E9' : '#F5F5F5' }]}>
           <Icon name={item.icon as any} size={20} color={item.isDefault ? COLORS.primary : COLORS.text.muted} />
@@ -75,15 +77,15 @@ export default function AddressesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Delivery Addresses</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Delivery Addresses</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>

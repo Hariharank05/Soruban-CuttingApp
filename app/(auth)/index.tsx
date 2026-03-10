@@ -4,8 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLORS } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 export default function SplashScreen() {
+  const themed = useThemedStyles();
   const router = useRouter();
   const scale = useRef(new Animated.Value(0.5)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -28,12 +30,12 @@ export default function SplashScreen() {
   }, []);
 
   return (
-    <LinearGradient colors={COLORS.gradient.header} style={styles.container}>
+    <LinearGradient colors={themed.headerGradient} style={styles.container}>
       <Animated.View style={[styles.logoWrap, { transform: [{ scale }], opacity }]}>
         <View style={styles.logoCircle}>
           <Icon name="basket" size={52} color={COLORS.primary} />
         </View>
-        <Text style={styles.appName}>Chopify</Text>
+        <Text style={[styles.appName, themed.textPrimary]}>Chopify</Text>
         <Text style={styles.tagline}>Fresh Cut Veggies, Delivered to You</Text>
       </Animated.View>
       <Text style={styles.powered}>Made with care in Coimbatore</Text>

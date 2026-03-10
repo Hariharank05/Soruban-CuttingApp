@@ -8,8 +8,10 @@ import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
 import { useScrollContext } from '@/context/ScrollContext';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 const MENU_ITEMS = [
+  { icon: 'cog-outline', label: 'Settings', color: '#546E7A', route: '/settings' },
   { icon: 'map-marker-outline', label: 'Delivery Addresses', color: '#1565C0', route: '/addresses' },
   { icon: 'wallet-outline', label: 'Wallet', color: '#388E3C', route: '/wallet' },
   { icon: 'bell-outline', label: 'Notifications', color: '#F57C00', route: '/notifications' },
@@ -26,23 +28,24 @@ export default function ProfileScreen() {
   const totalOrders = orders.length;
   const totalSaved = orders.reduce((sum, o) => sum + (o.discount || 0), 0);
   const activeSubscriptions = orders.filter(o => o.subscription?.status === 'active');
+  const themed = useThemedStyles();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
+        <Text style={[styles.headerTitle, themed.textPrimary]}>Profile</Text>
       </LinearGradient>
       <ScrollView contentContainerStyle={styles.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* User Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, themed.card]}>
           {user?.avatar ? (
             <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarCircle}><Icon name="account" size={40} color={COLORS.primary} /></View>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>{user?.name || 'Customer'}</Text>
+            <Text style={[styles.profileName, themed.textPrimary]}>{user?.name || 'Customer'}</Text>
             <View style={styles.phoneRow}>
               <Icon name="phone-outline" size={14} color={COLORS.primary} />
               <Text style={styles.profilePhone}>+91 {user?.phone || '98765 43210'}</Text>
@@ -65,7 +68,7 @@ export default function ProfileScreen() {
             { v: `\u20B9${totalSaved}`, l: 'Saved' },
             { v: '0', l: 'Favorites' },
           ].map((s, i) => (
-            <View key={i} style={styles.statCard}>
+            <View key={i} style={[styles.statCard, themed.card]}>
               <Text style={styles.statValue}>{s.v}</Text>
               <Text style={styles.statLabel}>{s.l}</Text>
             </View>
@@ -76,7 +79,7 @@ export default function ProfileScreen() {
         {activeSubscriptions.length > 0 && (
           <View style={styles.recentSection}>
             <View style={styles.recentHeader}>
-              <Text style={styles.recentTitle}>My Subscriptions</Text>
+              <Text style={[styles.recentTitle, themed.textPrimary]}>My Subscriptions</Text>
               <View style={styles.subCountBadge}><Text style={styles.subCountText}>{activeSubscriptions.length} active</Text></View>
             </View>
             {activeSubscriptions.map(order => {
@@ -86,7 +89,7 @@ export default function ProfileScreen() {
               return (
                 <TouchableOpacity
                   key={order.id}
-                  style={styles.subCard}
+                  style={[styles.subCard, themed.card]}
                   onPress={() => router.push({ pathname: '/order-detail', params: { id: order.id } })}
                 >
                   <View style={styles.subCardIcon}>
@@ -111,7 +114,7 @@ export default function ProfileScreen() {
         {totalOrders > 0 && (
           <View style={styles.recentSection}>
             <View style={styles.recentHeader}>
-              <Text style={styles.recentTitle}>Recent Orders</Text>
+              <Text style={[styles.recentTitle, themed.textPrimary]}>Recent Orders</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/orders')}>
                 <Text style={styles.recentLink}>View All</Text>
               </TouchableOpacity>
@@ -119,7 +122,7 @@ export default function ProfileScreen() {
             {orders.slice(0, 3).map(order => (
               <TouchableOpacity
                 key={order.id}
-                style={styles.orderCard}
+                style={[styles.orderCard, themed.card]}
                 onPress={() => router.push({ pathname: '/order-detail', params: { id: order.id } })}
               >
                 <View style={styles.orderIcon}>
@@ -139,7 +142,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Menu */}
-        <View style={styles.menuCard}>
+        <View style={[styles.menuCard, themed.card]}>
           {MENU_ITEMS.map((item, i) => (
             <TouchableOpacity
               key={i}

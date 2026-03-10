@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 const FAQS = [
   { q: 'How do I place an order?', a: 'Browse products, select cut style and quantity, add to cart, and proceed to checkout. You can schedule delivery or get it delivered now.' },
@@ -24,18 +25,19 @@ const CONTACT_OPTIONS = [
 
 export default function HelpScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Help & Support</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Help & Support</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>
@@ -43,10 +45,10 @@ export default function HelpScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Contact */}
-        <Text style={styles.sectionTitle}>Contact Us</Text>
+        <Text style={[styles.sectionTitle, themed.textPrimary]}>Contact Us</Text>
         <View style={styles.contactRow}>
           {CONTACT_OPTIONS.map((c, i) => (
-            <TouchableOpacity key={i} style={styles.contactCard}>
+            <TouchableOpacity key={i} style={[styles.contactCard, themed.card]}>
               <View style={[styles.contactIcon, { backgroundColor: c.color + '15' }]}>
                 <Icon name={c.icon as any} size={24} color={c.color} />
               </View>
@@ -57,13 +59,13 @@ export default function HelpScreen() {
         </View>
 
         {/* FAQs */}
-        <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+        <Text style={[styles.sectionTitle, themed.textPrimary]}>Frequently Asked Questions</Text>
         {FAQS.map((faq, i) => {
           const isOpen = expandedIndex === i;
           return (
             <TouchableOpacity
               key={i}
-              style={styles.faqCard}
+              style={[styles.faqCard, themed.card]}
               activeOpacity={0.8}
               onPress={() => setExpandedIndex(isOpen ? null : i)}
             >

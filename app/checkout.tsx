@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useCart } from '@/context/CartContext';
 import { useOrders } from '@/context/OrderContext';
 import { getCutLabel, getCutFee } from '@/data/cutTypes';
@@ -42,6 +43,7 @@ const TIME_SLOTS = [
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const { cartItems, getSubtotal, getCuttingTotal, clearCart } = useCart();
   const { createOrder } = useOrders();
 
@@ -111,13 +113,13 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Icon name="arrow-left" size={24} color={COLORS.text.primary} /></TouchableOpacity>
-            <Text style={styles.headerTitle}>Checkout</Text>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Icon name="arrow-left" size={24} color={themed.colors.text.primary} /></TouchableOpacity>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Checkout</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>
@@ -125,14 +127,14 @@ export default function CheckoutScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Address */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}><Icon name="map-marker" size={20} color={COLORS.primary} /><Text style={styles.sectionTitle}>Delivery Address</Text></View>
-          <TextInput style={styles.addressInput} value={address} onChangeText={setAddress} multiline numberOfLines={2} />
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="map-marker" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Delivery Address</Text></View>
+          <TextInput style={[styles.addressInput, themed.inputBg]} value={address} onChangeText={setAddress} multiline numberOfLines={2} />
         </View>
 
         {/* Delivery Mode Toggle */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}><Icon name="clock-outline" size={20} color={COLORS.primary} /><Text style={styles.sectionTitle}>Delivery Time</Text></View>
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="clock-outline" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Delivery Time</Text></View>
           <View style={styles.modeToggle}>
             <TouchableOpacity style={[styles.modeBtn, deliveryMode === 'now' && styles.modeBtnActive]} onPress={() => setDeliveryMode('now')}>
               <Icon name="lightning-bolt" size={18} color={deliveryMode === 'now' ? '#FFF' : COLORS.text.secondary} />
@@ -187,8 +189,8 @@ export default function CheckoutScreen() {
         </View>
 
         {/* Subscription */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}><Icon name="repeat" size={20} color={COLORS.primary} /><Text style={styles.sectionTitle}>Order Frequency</Text></View>
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="repeat" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Order Frequency</Text></View>
           <View style={styles.modeToggle}>
             <TouchableOpacity style={[styles.modeBtn, orderType === 'once' && styles.modeBtnActive]} onPress={() => setOrderType('once')}>
               <Icon name="numeric-1-circle" size={18} color={orderType === 'once' ? '#FFF' : COLORS.text.secondary} />
@@ -309,8 +311,8 @@ export default function CheckoutScreen() {
         </View>
 
         {/* Items */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}><Icon name="clipboard-list" size={20} color={COLORS.primary} /><Text style={styles.sectionTitle}>Order Items ({cartItems.length})</Text></View>
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="clipboard-list" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Order Items ({cartItems.length})</Text></View>
           {cartItems.map((item, idx) => (
             <View key={idx} style={styles.orderItem}>
               <View style={{ flex: 1 }}>
@@ -324,14 +326,31 @@ export default function CheckoutScreen() {
         </View>
 
         {/* Note */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}><Icon name="note-text" size={20} color={COLORS.primary} /><Text style={styles.sectionTitle}>Order Note</Text></View>
-          <TextInput style={styles.noteInput} placeholder='"Ring the bell twice", "Leave at door"' placeholderTextColor={COLORS.text.muted} value={orderNote} onChangeText={setOrderNote} multiline />
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="note-text" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Order Note</Text></View>
+          <View style={styles.quickNoteChipsRow}>
+            {['Ring the bell', 'Leave at door', 'Call before delivery', 'No plastic bags', 'Handle with care', 'Evening preferred'].map(chip => (
+              <TouchableOpacity
+                key={chip}
+                style={[styles.quickNoteChip, orderNote.includes(chip) && styles.quickNoteChipActive]}
+                onPress={() => {
+                  if (orderNote.includes(chip)) {
+                    setOrderNote(prev => prev.replace(chip, '').replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '').trim());
+                  } else {
+                    setOrderNote(prev => prev ? `${prev}, ${chip}` : chip);
+                  }
+                }}
+              >
+                <Text style={[styles.quickNoteChipText, orderNote.includes(chip) && styles.quickNoteChipTextActive]}>{chip}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput style={[styles.noteInput, themed.inputBg]} placeholder='"Ring the bell twice", "Leave at door"' placeholderTextColor={COLORS.text.muted} value={orderNote} onChangeText={setOrderNote} multiline />
         </View>
 
         {/* Bill */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.billTitle}>Bill Summary</Text>
+        <View style={[styles.sectionCard, themed.card]}>
+          <Text style={[styles.billTitle, themed.textPrimary]}>Bill Summary</Text>
           <View style={styles.billRow}><Text style={styles.billLabel}>Items Total</Text><Text style={styles.billValue}>{'\u20B9'}{subtotal - cuttingTotal}</Text></View>
           {cuttingTotal > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>Cutting Charges</Text><Text style={[styles.billValue, { color: COLORS.primary }]}>{'\u20B9'}{cuttingTotal}</Text></View>}
           <View style={styles.billRow}>
@@ -352,8 +371,8 @@ export default function CheckoutScreen() {
         </View>
 
         {/* Payment */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}><Icon name="credit-card" size={20} color={COLORS.primary} /><Text style={styles.sectionTitle}>Payment</Text></View>
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="credit-card" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Payment</Text></View>
           {([{ key: 'cod' as const, label: 'Cash on Delivery', icon: 'cash' }, { key: 'upi' as const, label: 'UPI Payment', icon: 'cellphone' }]).map(p => (
             <TouchableOpacity key={p.key} style={[styles.paymentRow, payment === p.key && styles.paymentRowActive]} onPress={() => setPayment(p.key)}>
               <Icon name={p.icon as any} size={20} color={payment === p.key ? COLORS.primary : COLORS.text.muted} />
@@ -365,8 +384,8 @@ export default function CheckoutScreen() {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      <View style={styles.orderBar}>
-        <View><Text style={styles.orderBarTotal}>{'\u20B9'}{total}</Text><Text style={styles.orderBarSub}>{cartItems.length} items | {deliveryLabel}</Text></View>
+      <View style={[styles.orderBar, themed.card]}>
+        <View><Text style={[styles.orderBarTotal, themed.textPrimary]}>{'\u20B9'}{total}</Text><Text style={styles.orderBarSub}>{cartItems.length} items | {deliveryLabel}</Text></View>
         <TouchableOpacity style={[styles.orderBarBtn, placing && { opacity: 0.6 }]} onPress={handlePlaceOrder} disabled={placing}>
           <Icon name="cart-check" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : orderType === 'subscribe' ? 'Subscribe & Order' : 'Place Order'}</Text>
         </TouchableOpacity>
@@ -418,6 +437,11 @@ const styles = StyleSheet.create({
   orderItemCut: { fontSize: 10, color: COLORS.primary, marginTop: 2 },
   orderItemInstr: { fontSize: 10, color: COLORS.text.muted, marginTop: 2 },
   orderItemPrice: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
+  quickNoteChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: SPACING.sm },
+  quickNoteChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF' },
+  quickNoteChipActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
+  quickNoteChipText: { fontSize: 11, fontWeight: '600', color: COLORS.text.secondary },
+  quickNoteChipTextActive: { color: COLORS.primary, fontWeight: '700' },
   noteInput: { backgroundColor: '#F7F7F7', borderRadius: RADIUS.md, padding: SPACING.md, fontSize: 13, color: COLORS.text.primary, borderWidth: 1, borderColor: COLORS.border, minHeight: 50 },
   billTitle: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary, marginBottom: SPACING.md },
   billRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },

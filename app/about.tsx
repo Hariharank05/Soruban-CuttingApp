@@ -5,20 +5,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 export default function AboutScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>About</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>About</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>
@@ -26,7 +28,7 @@ export default function AboutScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* App Info */}
-        <View style={styles.appCard}>
+        <View style={[styles.appCard, themed.card]}>
           <View style={styles.appIcon}>
             <Icon name="basket" size={36} color={COLORS.primary} />
           </View>
@@ -36,7 +38,7 @@ export default function AboutScreen() {
         </View>
 
         {/* Features */}
-        <Text style={styles.sectionTitle}>What We Offer</Text>
+        <Text style={[styles.sectionTitle, themed.textPrimary]}>What We Offer</Text>
         {[
           { icon: 'leaf', title: 'Farm Fresh', desc: 'Vegetables sourced daily from local farms', color: '#388E3C' },
           { icon: 'knife', title: 'Custom Cutting', desc: 'Choose from 5 cut styles - small pieces, slices, cubes & more', color: COLORS.primary },
@@ -44,7 +46,7 @@ export default function AboutScreen() {
           { icon: 'truck-fast', title: 'Quick Delivery', desc: 'Delivery in 30-45 minutes or schedule at your convenience', color: '#F57C00' },
           { icon: 'heart-pulse', title: 'Health Focus', desc: 'Diet foods, sports nutrition & healthy snacks for everyone', color: '#D32F2F' },
         ].map((f, i) => (
-          <View key={i} style={styles.featureCard}>
+          <View key={i} style={[styles.featureCard, themed.card]}>
             <View style={[styles.featureIcon, { backgroundColor: f.color + '15' }]}>
               <Icon name={f.icon as any} size={22} color={f.color} />
             </View>
@@ -56,7 +58,7 @@ export default function AboutScreen() {
         ))}
 
         {/* Legal */}
-        <View style={styles.legalCard}>
+        <View style={[styles.legalCard, themed.card]}>
           {['Terms of Service', 'Privacy Policy', 'Refund Policy'].map((item, i) => (
             <TouchableOpacity key={i} style={styles.legalItem}>
               <Text style={styles.legalText}>{item}</Text>

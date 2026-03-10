@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import productsData from '@/data/products.json';
 
 const ALL_CATEGORIES = ['Vegetables', 'Fruits', 'Healthy Snacks', 'Diet Foods', 'Sports Nutrition'];
@@ -21,6 +22,7 @@ export default function BrowseScreen() {
   const router = useRouter();
   const { category } = useLocalSearchParams<{ category: string }>();
   const { width } = useWindowDimensions();
+  const themed = useThemedStyles();
 
   const [activeCategory, setActiveCategory] = useState(category || 'Vegetables');
   const [activeSub, setActiveSub] = useState('All');
@@ -42,7 +44,7 @@ export default function BrowseScreen() {
 
   const renderProduct = ({ item }: { item: typeof productsData[0] }) => (
     <TouchableOpacity
-      style={[styles.card, { width: cardW }]} activeOpacity={0.85}
+      style={[styles.card, { width: cardW }, themed.card]} activeOpacity={0.85}
       onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
     >
       <View style={styles.cardImageWrap}>
@@ -64,13 +66,13 @@ export default function BrowseScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Icon name="arrow-left" size={24} color={COLORS.text.primary} /></TouchableOpacity>
-            <Text style={styles.headerTitle}>{activeCategory}</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>{activeCategory}</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>

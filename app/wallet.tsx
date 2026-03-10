@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 interface Transaction {
   id: string;
@@ -24,10 +25,11 @@ const TRANSACTIONS: Transaction[] = [
 
 export default function WalletScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const balance = TRANSACTIONS.reduce((sum, t) => sum + (t.type === 'credit' ? t.amount : -t.amount), 0);
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
-    <View style={styles.txCard}>
+    <View style={[styles.txCard, themed.card]}>
       <View style={[styles.txIcon, { backgroundColor: item.type === 'credit' ? '#E8F5E9' : '#E8F5E9' }]}>
         <Icon
           name={item.type === 'credit' ? 'arrow-down-circle' : 'arrow-up-circle'}
@@ -47,15 +49,15 @@ export default function WalletScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Wallet</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Wallet</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>
@@ -74,7 +76,7 @@ export default function WalletScreen() {
       </View>
 
       {/* Transactions */}
-      <Text style={styles.sectionTitle}>Transaction History</Text>
+      <Text style={[styles.sectionTitle, themed.textPrimary]}>Transaction History</Text>
       <FlatList
         data={TRANSACTIONS}
         keyExtractor={i => i.id}

@@ -6,6 +6,7 @@ import {
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useCart } from '@/context/CartContext';
 import productsData from '@/data/products.json';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ const POPULAR_CATEGORIES = [
 export default function SearchScreen() {
   const router = useRouter();
   const { addToCart, cartItems, updateQuantity } = useCart();
+  const themed = useThemedStyles();
   const [query, setQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
 
@@ -36,7 +38,7 @@ export default function SearchScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.productRow}
+        style={[styles.productRow, themed.card]}
         onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
       >
         <Image source={{ uri: item.image }} style={styles.productImage} />
@@ -65,10 +67,10 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       {/* Search Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, themed.card]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
@@ -95,7 +97,7 @@ export default function SearchScreen() {
       {query.length === 0 ? (
         <ScrollView contentContainerStyle={styles.content}>
           {/* Recent Searches */}
-          <Text style={styles.sectionTitle}>Recent Searches</Text>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Recent Searches</Text>
           <View style={styles.chipsRow}>
             {RECENT_SEARCHES.map(term => (
               <TouchableOpacity key={term} style={styles.chip} onPress={() => setQuery(term)}>
@@ -106,7 +108,7 @@ export default function SearchScreen() {
           </View>
 
           {/* Popular Categories */}
-          <Text style={styles.sectionTitle}>Popular Categories</Text>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Popular Categories</Text>
           <View style={styles.catGrid}>
             {POPULAR_CATEGORIES.map(cat => (
               <TouchableOpacity

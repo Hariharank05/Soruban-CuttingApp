@@ -8,11 +8,13 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useAuth } from '@/context/AuthContext';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
+  const themed = useThemedStyles();
 
   const [name, setName] = useState(user?.name || '');
   const [phone] = useState(user?.phone || '');
@@ -91,15 +93,15 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, themed.card]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={[styles.headerTitle, themed.textPrimary]}>Edit Profile</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -125,7 +127,7 @@ export default function EditProfileScreen() {
           </View>
 
           {/* Form */}
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, themed.card]}>
             <View style={styles.field}>
               <Text style={styles.label}>Full Name</Text>
               <View style={styles.inputRow}>

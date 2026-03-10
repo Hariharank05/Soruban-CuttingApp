@@ -8,6 +8,7 @@ import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useScrollContext } from '@/context/ScrollContext';
 import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 type FilterType = 'all' | 'veg' | 'fruit';
 const FRUIT_PACK_IDS = ['pack_fruit_salad', 'pack_fruit_juice'];
@@ -16,6 +17,7 @@ export default function PacksScreen() {
   const router = useRouter();
   const { handleScroll } = useScrollContext();
   const [filter, setFilter] = useState<FilterType>('all');
+  const themed = useThemedStyles();
 
   const packs = useMemo(() => {
     if (filter === 'all') return DISH_PACKS;
@@ -38,7 +40,7 @@ export default function PacksScreen() {
           <Image source={{ uri: item.image }} style={styles.packImage} resizeMode="cover" />
           <View style={{ flex: 1 }}>
             <View style={styles.packNameRow}>
-              <Text style={styles.packName}>{item.name}</Text>
+              <Text style={[styles.packName, themed.textPrimary]}>{item.name}</Text>
               {item.tag && <View style={styles.tagBadge}><Text style={styles.tagText}>{item.tag}</Text></View>}
             </View>
             <Text style={styles.packDesc}>{item.description}</Text>
@@ -59,7 +61,7 @@ export default function PacksScreen() {
         </View>
         <View style={styles.packFooter}>
           <View>
-            <Text style={styles.packPrice}>{'\u20B9'}{item.price}</Text>
+            <Text style={[styles.packPrice, themed.textPrimary]}>{'\u20B9'}{item.price}</Text>
             <Text style={styles.packServes}>{item.items.length} items | Choose your cut style</Text>
           </View>
           <View style={styles.viewBtn}>
@@ -72,10 +74,10 @@ export default function PacksScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={['#C8E6C9', '#E8F5E9']} style={styles.header}>
-        <Text style={styles.headerTitle}>Dish Packs</Text>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
+        <Text style={[styles.headerTitle, themed.textPrimary]}>Dish Packs</Text>
         <Text style={styles.headerSub}>Pre-cut veggie packs for your favorite dishes</Text>
       </LinearGradient>
 

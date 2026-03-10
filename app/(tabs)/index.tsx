@@ -12,6 +12,7 @@ import { useScrollContext } from '@/context/ScrollContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import AnimatedSearchPlaceholder from '@/src/components/AnimatedSearchPlaceholder';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
 
@@ -143,6 +144,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const { handleScroll } = useScrollContext();
   const { user } = useAuth();
+  const themed = useThemedStyles();
 
   const popularProducts = useMemo(() => productsData.filter(p => POPULAR_IDS.includes(p.id)), []);
   const healthySnacks = useMemo(() => productsData.filter(p => p.category === 'Healthy Snacks').slice(0, 6), []);
@@ -151,13 +153,13 @@ export default function HomeScreen() {
   const cardW = (width - SPACING.base * 2 - 10) / 2;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerTitle}>Chopify</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Chopify</Text>
             <Text style={styles.headerSub}>Fresh cut, ready to cook!</Text>
           </View>
           <View style={styles.headerActions}>
@@ -199,7 +201,7 @@ export default function HomeScreen() {
         <OffersCarousel width={width} />
 
         {/* Categories */}
-        <Text style={styles.sectionTitle}>Shop by Category</Text>
+        <Text style={[styles.sectionTitle, themed.textPrimary]}>Shop by Category</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
           {CATEGORIES.map(cat => (
             <TouchableOpacity
@@ -245,12 +247,12 @@ export default function HomeScreen() {
         </View> */}
 
         {/* Popular Items */}
-        <Text style={styles.sectionTitle}>Popular Items</Text>
+        <Text style={[styles.sectionTitle, themed.textPrimary]}>Popular Items</Text>
         <View style={styles.popularGrid}>
           {popularProducts.map(item => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.productCard, { width: cardW }]}
+              style={[styles.productCard, { width: cardW }, themed.card]}
               activeOpacity={0.85}
               onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
             >
@@ -270,7 +272,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Dish Pack Carousel */}
-        <Text style={styles.sectionTitle}>Quick Dish Packs</Text>
+        <Text style={[styles.sectionTitle, themed.textPrimary]}>Quick Dish Packs</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.packsScroll}>
           {DISH_PACKS.slice(0, 5).map(pack => (
             <TouchableOpacity
@@ -304,7 +306,7 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
           {healthySnacks.map(item => (
-            <TouchableOpacity key={item.id} style={styles.miniCard} activeOpacity={0.85}
+            <TouchableOpacity key={item.id} style={[styles.miniCard, themed.card]} activeOpacity={0.85}
               onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}>
               <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
               <View style={styles.miniBody}>
@@ -336,7 +338,7 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
           {dietFoods.map(item => (
-            <TouchableOpacity key={item.id} style={styles.miniCard} activeOpacity={0.85}
+            <TouchableOpacity key={item.id} style={[styles.miniCard, themed.card]} activeOpacity={0.85}
               onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}>
               <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
               <View style={styles.miniBody}>
@@ -370,7 +372,7 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
           {sportsFoods.map(item => (
-            <TouchableOpacity key={item.id} style={styles.miniCard} activeOpacity={0.85}
+            <TouchableOpacity key={item.id} style={[styles.miniCard, themed.card]} activeOpacity={0.85}
               onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}>
               <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
               <View style={styles.miniBody}>

@@ -8,8 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, RADIUS, SPACING } from '@/src/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 export default function OTPScreen() {
+  const themed = useThemedStyles();
   const router = useRouter();
   const { phone, name, address } = useLocalSearchParams<{ phone: string; name?: string; address?: string }>();
   const { login, loginByPhone } = useAuth();
@@ -54,15 +56,15 @@ export default function OTPScreen() {
   const fullOtp = otp.join('');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.heroSection}>
+      <LinearGradient colors={themed.headerGradient} style={styles.heroSection}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
         <View style={styles.heroContent}>
           <Icon name="cellphone-message" size={60} color={COLORS.primary} />
-          <Text style={styles.title}>Verify OTP</Text>
+          <Text style={[styles.title, themed.textPrimary]}>Verify OTP</Text>
           <Text style={styles.sub}>Enter the 6-digit code sent to +91 {phone}</Text>
         </View>
       </LinearGradient>
@@ -73,7 +75,7 @@ export default function OTPScreen() {
             <TextInput
               key={i}
               ref={ref => { inputs.current[i] = ref; }}
-              style={[styles.otpBox, val ? styles.otpBoxFilled : null]}
+              style={[styles.otpBox, themed.inputBg, val ? styles.otpBoxFilled : null]}
               maxLength={1}
               keyboardType="number-pad"
               value={val}

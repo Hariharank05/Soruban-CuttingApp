@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLORS, SPACING, RADIUS } from '@/src/utils/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -49,6 +50,7 @@ const slides = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const themed = useThemedStyles();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatRef = useRef<FlatList>(null);
 
@@ -64,7 +66,7 @@ export default function OnboardingScreen() {
   const skip = () => router.replace('/(auth)/login');
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, themed.safeArea]}>
       <FlatList
         ref={flatRef}
         data={slides}
@@ -84,7 +86,7 @@ export default function OnboardingScreen() {
           </LinearGradient>
         )}
       />
-      <View style={[styles.footer, { paddingBottom: 24 + insets.bottom }]}>
+      <View style={[styles.footer, themed.card, { paddingBottom: 24 + insets.bottom }]}>
         <View style={styles.dots}>
           {slides.map((_, i) => (
             <View key={i} style={[styles.dot, i === currentIndex && styles.dotActive]} />

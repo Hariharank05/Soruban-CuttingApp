@@ -8,9 +8,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { COLORS, RADIUS, SPACING, SHADOW } from '@/src/utils/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const [form, setForm] = useState({ name: '', phone: '', address: '' });
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
@@ -27,23 +29,23 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={COLORS.gradient.header} style={styles.heroSection}>
+          <LinearGradient colors={themed.headerGradient} style={styles.heroSection}>
             <TouchableOpacity onPress={() => router.back()} style={styles.back}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.title}>Create Account</Text>
+            <Text style={[styles.title, themed.textPrimary]}>Create Account</Text>
             <Text style={styles.sub}>Register as customer</Text>
           </LinearGradient>
 
-          <View style={styles.formArea}>
+          <View style={[styles.formArea, themed.card]}>
             <View style={styles.field}>
               <Text style={styles.label}>Full Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, themed.inputBg]}
                 placeholder="Enter your name"
                 placeholderTextColor={COLORS.text.muted}
                 value={form.name}
@@ -54,7 +56,7 @@ export default function RegisterScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>Mobile Number</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, themed.inputBg]}
                 placeholder="10-digit mobile number"
                 placeholderTextColor={COLORS.text.muted}
                 keyboardType="phone-pad"
@@ -67,7 +69,7 @@ export default function RegisterScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>Address</Text>
               <TextInput
-                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                style={[styles.input, themed.inputBg, { height: 80, textAlignVertical: 'top' }]}
                 placeholder="Enter your full address"
                 placeholderTextColor={COLORS.text.muted}
                 multiline

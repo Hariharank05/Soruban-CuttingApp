@@ -3,6 +3,7 @@ import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLORS, SPACING, RADIUS } from '@/src/utils/theme';
 import { useCart } from '@/context/CartContext';
 import { ScrollProvider, useScrollContext } from '@/context/ScrollContext';
+import { useTheme } from '@/context/ThemeContext';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -10,6 +11,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useScrollContext();
+  const { colors } = useTheme();
   const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
   return (
@@ -20,6 +22,8 @@ function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           height: tabBarHeight,
           paddingBottom: Math.max(insets.bottom, 8),
           transform: [{ translateY: tabBarTranslateY }],
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
         },
       ]}
     >
@@ -27,7 +31,7 @@ function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         const { options } = descriptors[route.key];
         const label = options.title ?? route.name;
         const isFocused = state.index === index;
-        const color = isFocused ? COLORS.primary : COLORS.text.muted;
+        const color = isFocused ? colors.primary : colors.text.muted;
 
         const onPress = () => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });

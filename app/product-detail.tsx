@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { CUT_TYPE_OPTIONS, WEIGHT_OPTIONS, getCutFee } from '@/data/cutTypes';
 import { useCart } from '@/context/CartContext';
 import productsData from '@/data/products.json';
@@ -14,6 +15,7 @@ import type { CutType, Product } from '@/types';
 
 export default function ProductDetailScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { addToCart, cartItems } = useCart();
 
@@ -40,7 +42,7 @@ export default function ProductDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
         <View style={styles.imageContainer}>
@@ -56,7 +58,7 @@ export default function ProductDetailScreen() {
         <View style={styles.content}>
           <View style={styles.infoRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.productName}>{product.name}</Text>
+              <Text style={[styles.productName, themed.textPrimary]}>{product.name}</Text>
               <Text style={styles.productUnit}>{product.unit}</Text>
             </View>
             <View style={styles.priceTag}>
@@ -78,7 +80,7 @@ export default function ProductDetailScreen() {
           {/* Health Benefits */}
           {product.healthBenefits && product.healthBenefits.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Health Benefits</Text>
+              <Text style={[styles.sectionTitle, themed.textPrimary]}>Health Benefits</Text>
               {product.healthBenefits.map((benefit, i) => (
                 <View key={i} style={styles.benefitRow}>
                   <Icon name="check-circle" size={16} color={COLORS.green} />
@@ -91,7 +93,7 @@ export default function ProductDetailScreen() {
           {/* Weight Selection */}
           {isKgProduct && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Weight</Text>
+              <Text style={[styles.sectionTitle, themed.textPrimary]}>Select Weight</Text>
               <View style={styles.chipRow}>
                 {WEIGHT_OPTIONS.map(w => {
                   const isActive = selectedWeight === w.grams;
@@ -109,7 +111,7 @@ export default function ProductDetailScreen() {
           {/* Cut Style - only for vegetables and fruits */}
           {isCuttable && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>How do you want it cut?</Text>
+              <Text style={[styles.sectionTitle, themed.textPrimary]}>How do you want it cut?</Text>
               <View style={styles.cutGrid}>
                 {CUT_TYPE_OPTIONS.map(opt => {
                   const isActive = selectedCut === opt.id;
@@ -143,13 +145,30 @@ export default function ProductDetailScreen() {
 
           {/* Instructions */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Special Instructions</Text>
-            <TextInput style={styles.instructionsInput} placeholder='"thin slices", "remove seeds", "keep skin on"' placeholderTextColor={COLORS.text.muted} value={instructions} onChangeText={setInstructions} multiline numberOfLines={2} />
+            <Text style={[styles.sectionTitle, themed.textPrimary]}>Special Instructions</Text>
+            <View style={styles.quickChipsRow}>
+              {['Extra thin', 'Remove seeds', 'Keep skin on', 'No stems', 'Wash thoroughly', 'Peel off'].map(chip => (
+                <TouchableOpacity
+                  key={chip}
+                  style={[styles.quickChip, instructions.includes(chip) && styles.quickChipActive]}
+                  onPress={() => {
+                    if (instructions.includes(chip)) {
+                      setInstructions(prev => prev.replace(chip, '').replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '').trim());
+                    } else {
+                      setInstructions(prev => prev ? `${prev}, ${chip}` : chip);
+                    }
+                  }}
+                >
+                  <Text style={[styles.quickChipText, instructions.includes(chip) && styles.quickChipTextActive]}>{chip}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput style={[styles.instructionsInput, themed.inputBg]} placeholder='"thin slices", "remove seeds", "keep skin on"' placeholderTextColor={COLORS.text.muted} value={instructions} onChangeText={setInstructions} multiline numberOfLines={2} />
           </View>
 
           {/* Quantity */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quantity</Text>
+            <Text style={[styles.sectionTitle, themed.textPrimary]}>Quantity</Text>
             <View style={styles.qtyRow}>
               <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity(Math.max(1, quantity - 1))}><Icon name="minus" size={20} color={COLORS.primary} /></TouchableOpacity>
               <Text style={styles.qtyText}>{quantity}</Text>
@@ -158,7 +177,7 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* Price Breakdown */}
-          <View style={styles.priceBreakdown}>
+          <View style={[styles.priceBreakdown, themed.card]}>
             <View style={styles.priceRow}><Text style={styles.priceLabel}>Base price</Text><Text style={styles.priceValue}>{'\u20B9'}{basePrice} x {quantity}</Text></View>
             {cutFee > 0 && <View style={styles.priceRow}><Text style={styles.priceLabel}>Cutting fee</Text><Text style={[styles.priceValue, { color: COLORS.primary }]}>{'\u20B9'}{cutFee} x {quantity}</Text></View>}
             <View style={[styles.priceRow, styles.priceTotalRow]}><Text style={styles.priceTotalLabel}>Total</Text><Text style={styles.priceTotalValue}>{'\u20B9'}{totalPrice}</Text></View>
@@ -168,9 +187,9 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.addBar}>
+      <View style={[styles.addBar, themed.card]}>
         <View>
-          <Text style={styles.addBarPrice}>{'\u20B9'}{totalPrice}</Text>
+          <Text style={[styles.addBarPrice, themed.textPrimary]}>{'\u20B9'}{totalPrice}</Text>
           {selectedCut && <Text style={styles.addBarCut}>incl. cutting</Text>}
         </View>
         <TouchableOpacity style={styles.addBarBtn} onPress={handleAddToCart}>
@@ -263,6 +282,11 @@ const styles = StyleSheet.create({
   cutVideoBtnText: { fontSize: 9, fontWeight: '700', color: COLORS.primary },
   noCutHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACING.sm, paddingVertical: 6 },
   noCutHintText: { fontSize: 11, color: COLORS.text.muted },
+  quickChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: SPACING.sm },
+  quickChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF' },
+  quickChipActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
+  quickChipText: { fontSize: 11, fontWeight: '600', color: COLORS.text.secondary },
+  quickChipTextActive: { color: COLORS.primary, fontWeight: '700' },
   instructionsInput: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md, fontSize: 13, color: COLORS.text.primary, minHeight: 60, textAlignVertical: 'top' },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   qtyBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },

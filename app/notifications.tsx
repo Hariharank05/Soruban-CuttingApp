@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 interface Notification {
   id: string;
@@ -35,11 +36,12 @@ const NOTIFICATIONS: Notification[] = [
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const themed = useThemedStyles();
 
   const renderItem = ({ item }: { item: Notification }) => {
     const icon = ICON_MAP[item.type];
     return (
-      <View style={[styles.notifCard, !item.read && styles.notifUnread]}>
+      <View style={[styles.notifCard, themed.card, !item.read && styles.notifUnread]}>
         {!item.read && <View style={styles.unreadDot} />}
         <View style={[styles.notifIcon, { backgroundColor: icon.bg }]}>
           <Icon name={icon.name as any} size={22} color={icon.color} />
@@ -54,15 +56,15 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Notifications</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>Notifications</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>

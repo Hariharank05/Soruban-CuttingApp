@@ -6,8 +6,11 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useOrders } from '@/context/OrderContext';
+import { useCart } from '@/context/CartContext';
 import { getCutLabel } from '@/data/cutTypes';
 import { useScrollContext } from '@/context/ScrollContext';
+import type { Product } from '@/types';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   placed: { label: 'Placed', color: '#1565C0', icon: 'clipboard-check' },
@@ -23,7 +26,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
 export default function OrdersScreen() {
   const router = useRouter();
   const { orders } = useOrders();
+  const { addToCart } = useCart();
   const { handleScroll } = useScrollContext();
+  const themed = useThemedStyles();
+
+  const handleReorder = (order: typeof orders[0]) => {
+    order.items.forEach(item => {
+      addToCart(item as unknown as Product, item.quantity, item.selectedWeight, item.cutType, item.specialInstructions);
+    });
+    router.push('/(tabs)/cart');
+  };
 
   const renderOrder = ({ item }: { item: typeof orders[0] }) => {
     const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.placed;
@@ -33,10 +45,10 @@ export default function OrdersScreen() {
     const timeStr = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 
     return (
-      <TouchableOpacity style={styles.orderCard} activeOpacity={0.85} onPress={() => router.push({ pathname: '/order-detail', params: { id: item.id } })}>
+      <TouchableOpacity style={[styles.orderCard, themed.card]} activeOpacity={0.85} onPress={() => router.push({ pathname: '/order-detail', params: { id: item.id } })}>
         <View style={styles.orderHeader}>
           <View>
-            <Text style={styles.orderId}>#{item.id}</Text>
+            <Text style={[styles.orderId, themed.textPrimary]}>#{item.id}</Text>
             <Text style={styles.orderDate}>{dateStr} at {timeStr}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: config.color + '15' }]}>
@@ -59,10 +71,16 @@ export default function OrdersScreen() {
           {item.items.length > 3 && <Text style={styles.moreItems}>+{item.items.length - 3} more items</Text>}
         </View>
         <View style={styles.orderFooter}>
-          <Text style={styles.orderTotal}>{'\u20B9'}{item.total}</Text>
-          <View style={styles.orderMeta}>
-            <Text style={styles.orderMetaText}>{item.items.reduce((s, i) => s + i.quantity, 0)} items</Text>
-            {cutItems.length > 0 && <Text style={styles.orderMetaCut}>{'\uD83D\uDD2A'} {cutItems.length} cut</Text>}
+          <Text style={[styles.orderTotal, themed.textPrimary]}>{'\u20B9'}{item.total}</Text>
+          <View style={styles.orderFooterRight}>
+            <View style={styles.orderMeta}>
+              <Text style={styles.orderMetaText}>{item.items.reduce((s, i) => s + i.quantity, 0)} items</Text>
+              {cutItems.length > 0 && <Text style={styles.orderMetaCut}>{'\uD83D\uDD2A'} {cutItems.length} cut</Text>}
+            </View>
+            <TouchableOpacity style={styles.reorderSmallBtn} onPress={(e) => { e.stopPropagation(); handleReorder(item); }}>
+              <Icon name="cart-plus" size={14} color="#FFF" />
+              <Text style={styles.reorderSmallText}>Reorder</Text>
+            </TouchableOpacity>
           </View>
         </View>
         {item.status !== 'delivered' && item.status !== 'cancelled' && (
@@ -80,9 +98,9 @@ export default function OrdersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}><Text style={styles.headerTitle}>{'\uD83D\uDCE6'} My Orders</Text></LinearGradient>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}><Text style={[styles.headerTitle, themed.textPrimary]}>{'\uD83D\uDCE6'} My Orders</Text></LinearGradient>
       {orders.length === 0 ? (
         <View style={styles.empty}>
           <Icon name="clipboard-text-outline" size={64} color={COLORS.text.muted} />
@@ -111,8 +129,11 @@ const styles = StyleSheet.create({
   orderItemText: { fontSize: 12, color: COLORS.text.secondary },
   moreItems: { fontSize: 11, color: COLORS.text.muted, fontStyle: 'italic', marginTop: 2 },
   orderFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.border },
+  orderFooterRight: { alignItems: 'flex-end', gap: 6 },
   orderTotal: { fontSize: 17, fontWeight: '800', color: COLORS.text.primary },
   orderMeta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  reorderSmallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 5 },
+  reorderSmallText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
   orderMetaText: { fontSize: 11, color: COLORS.text.muted },
   orderMetaCut: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },

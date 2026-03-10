@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
+import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { DISH_PACKS, PACK_SIZES, DEFAULT_PACK_SIZE } from '@/data/dishPacks';
 import { CUT_TYPE_OPTIONS, WEIGHT_OPTIONS, getCutFee } from '@/data/cutTypes';
 import { useCart } from '@/context/CartContext';
@@ -23,6 +24,7 @@ export default function DishPackDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { addToCart } = useCart();
+  const themed = useThemedStyles();
 
   const pack = useMemo(() => DISH_PACKS.find(p => p.id === id), [id]);
   const [selectedSize, setSelectedSize] = useState(DEFAULT_PACK_SIZE);
@@ -92,13 +94,13 @@ export default function DishPackDetailScreen() {
   const activeVariant = pack.regionalVariants?.find(v => v.id === selectedVariant);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={COLORS.gradient.header} style={styles.header}>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Icon name="arrow-left" size={24} color={COLORS.text.primary} /></TouchableOpacity>
-            <Text style={styles.headerTitle}>{pack.name}</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>{pack.name}</Text>
             <View style={{ width: 40 }} />
           </View>
         </SafeAreaView>
@@ -116,12 +118,12 @@ export default function DishPackDetailScreen() {
         {/* Regional Variants */}
         {pack.regionalVariants && pack.regionalVariants.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose Your Style</Text>
+            <Text style={[styles.sectionTitle, themed.textPrimary]}>Choose Your Style</Text>
             {pack.regionalVariants.map(variant => {
               const isActive = selectedVariant === variant.id;
               const spiceColor = SPICE_COLORS[variant.spiceLevel];
               return (
-                <TouchableOpacity key={variant.id} style={[styles.variantCard, isActive && styles.variantCardActive]}
+                <TouchableOpacity key={variant.id} style={[styles.variantCard, themed.card, isActive && styles.variantCardActive]}
                   onPress={() => setSelectedVariant(isActive ? undefined : variant.id)}>
                   <View style={styles.variantHeader}>
                     <Text style={[styles.variantName, isActive && { color: COLORS.primary }]}>{variant.name}</Text>
@@ -148,7 +150,7 @@ export default function DishPackDetailScreen() {
         {/* Cooking Video & Preparation */}
         {(pack.cookingVideoUrl || pack.preparationSteps) && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How to Cook</Text>
+            <Text style={[styles.sectionTitle, themed.textPrimary]}>How to Cook</Text>
             {pack.cookingVideoUrl && (
               <TouchableOpacity style={styles.videoThumb} onPress={() => setShowVideo(true)}>
                 <Image source={{ uri: pack.image }} style={styles.videoThumbImage} resizeMode="cover" />
@@ -159,7 +161,7 @@ export default function DishPackDetailScreen() {
               </TouchableOpacity>
             )}
             {pack.preparationSteps && (
-              <View style={styles.stepsCard}>
+              <View style={[styles.stepsCard, themed.card]}>
                 <Text style={styles.stepsTitle}>Preparation Steps</Text>
                 {pack.preparationSteps.map((step, i) => (
                   <View key={i} style={styles.stepRow}>
@@ -174,12 +176,12 @@ export default function DishPackDetailScreen() {
 
         {/* Size Selector */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pack Size</Text>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Pack Size</Text>
           <View style={styles.sizeRow}>
             {PACK_SIZES.map(size => {
               const isActive = selectedSize.id === size.id;
               return (
-                <TouchableOpacity key={size.id} style={[styles.sizeChip, isActive && styles.sizeChipActive]} onPress={() => handleSizeChange(size)}>
+                <TouchableOpacity key={size.id} style={[styles.sizeChip, themed.card, isActive && styles.sizeChipActive]} onPress={() => handleSizeChange(size)}>
                   <Text style={[styles.sizeLabel, isActive && styles.sizeLabelActive]}>{size.label}</Text>
                   <Text style={[styles.sizeWeight, isActive && styles.sizeWeightActive]}>{size.weightLabel}</Text>
                   <Text style={[styles.sizeServes, isActive && styles.sizeServesActive]}>{size.serves}</Text>
@@ -191,7 +193,7 @@ export default function DishPackDetailScreen() {
 
         {/* Pack Items */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pack Items ({allItems.length})</Text>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Pack Items ({allItems.length})</Text>
           {allItems.map(item => {
             const product = productsData.find(p => p.id === item.productId);
             if (!product) return null;
@@ -202,7 +204,7 @@ export default function DishPackDetailScreen() {
             const price = calcItemPrice(item.productId, item.baseQty);
 
             return (
-              <View key={item.productId} style={styles.itemCard}>
+              <View key={item.productId} style={[styles.itemCard, themed.card]}>
                 <View style={styles.itemHeader}>
                   <View style={styles.itemImageWrap}><Image source={{ uri: product.image }} style={styles.itemImage} resizeMode="cover" /></View>
                   <View style={{ flex: 1 }}>
@@ -250,7 +252,7 @@ export default function DishPackDetailScreen() {
         {/* Extras */}
         {extraProducts.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Add Extra Items</Text>
+            <Text style={[styles.sectionTitle, themed.textPrimary]}>Add Extra Items</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.extrasRow}>
               {extraProducts.slice(0, 10).map(p => (
                 <TouchableOpacity key={p.id} style={styles.extraCard} onPress={() => setExtraItems(prev => [...prev, p.id])}>
@@ -265,12 +267,12 @@ export default function DishPackDetailScreen() {
 
         {/* Instructions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Special Instructions</Text>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Special Instructions</Text>
           <TextInput style={styles.instructionsInput} placeholder='"Keep drumstick long", "Extra thin onion slices"' placeholderTextColor={COLORS.text.muted} value={instructions} onChangeText={setInstructions} multiline numberOfLines={2} />
         </View>
 
         {/* Price */}
-        <View style={styles.priceCard}>
+        <View style={[styles.priceCard, themed.card]}>
           <View style={styles.priceRow}><Text style={styles.priceLabel}>Pack Items</Text><Text style={styles.priceValue}>{'\u20B9'}{totalPrice - cuttingTotal}</Text></View>
           {cuttingTotal > 0 && <View style={styles.priceRow}><Text style={styles.priceLabel}>Cutting Charges</Text><Text style={[styles.priceValue, { color: COLORS.primary }]}>{'\u20B9'}{cuttingTotal}</Text></View>}
           <View style={[styles.priceRow, styles.priceTotalRow]}><Text style={styles.priceTotalLabel}>Total</Text><Text style={styles.priceTotalValue}>{'\u20B9'}{totalPrice}</Text></View>
@@ -278,7 +280,7 @@ export default function DishPackDetailScreen() {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      <View style={styles.addBar}>
+      <View style={[styles.addBar, themed.card]}>
         <View><Text style={styles.addBarPrice}>{'\u20B9'}{totalPrice}</Text><Text style={styles.addBarSub}>{allItems.length} items | {selectedSize.serves}</Text></View>
         <TouchableOpacity style={styles.addBarBtn} onPress={handleAddPackToCart}>
           <Icon name="cart-plus" size={20} color="#FFF" /><Text style={styles.addBarBtnText}>Add Pack to Cart</Text>
