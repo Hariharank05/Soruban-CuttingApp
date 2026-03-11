@@ -100,6 +100,7 @@ function RootLayoutNav() {
         <Stack.Screen name="offers-coupons" />
         <Stack.Screen name="vacation-mode" />
         <Stack.Screen name="order-confirmation" />
+        <Stack.Screen name="order-history-calendar" />
       </Stack>
     </NavThemeProvider>
   );

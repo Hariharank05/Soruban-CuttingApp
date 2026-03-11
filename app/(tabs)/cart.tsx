@@ -11,6 +11,7 @@ import { getCutLabel, getCutFee } from '@/data/cutTypes';
 import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useCoupons } from '@/context/CouponContext';
 import { useSavedCarts } from '@/context/SavedCartContext';
+import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
 
 export default function CartScreen() {
@@ -22,6 +23,33 @@ export default function CartScreen() {
   const { saveCart } = useSavedCarts();
   const [couponCode, setCouponCode] = useState('');
   const [couponMsg, setCouponMsg] = useState('');
+  const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set());
+
+  const togglePackExpand = (packId: string) => {
+    setExpandedPacks(prev => {
+      const next = new Set(prev);
+      next.has(packId) ? next.delete(packId) : next.add(packId);
+      return next;
+    });
+  };
+
+  // Group cart items: individual items + grouped packs
+  const { individualItems, packGroups } = useMemo(() => {
+    const individual: typeof cartItems = [];
+    const packs: Record<string, { packId: string; packName: string; items: typeof cartItems; packImage?: string }> = {};
+    cartItems.forEach(item => {
+      if (item.packId && item.packName) {
+        if (!packs[item.packId]) {
+          const dishPack = DISH_PACKS.find(p => p.id === item.packId);
+          packs[item.packId] = { packId: item.packId, packName: item.packName, items: [], packImage: dishPack?.image };
+        }
+        packs[item.packId].items.push(item);
+      } else {
+        individual.push(item);
+      }
+    });
+    return { individualItems: individual, packGroups: Object.values(packs) };
+  }, [cartItems]);
 
   const MIN_ORDER = 100;
   const FREE_DELIVERY_THRESHOLD = 300;
@@ -135,7 +163,32 @@ export default function CartScreen() {
             showsVerticalScrollIndicator={cartItems.length > 3}
             style={cartItems.length > 3 ? styles.cartItemsScroll : undefined}
           >
-            {cartItems.map((item, idx) => (
+            {/* Pack groups */}
+            {packGroups.map(group => {
+              const isExpanded = expandedPacks.has(group.packId);
+              const packTotal = group.items.reduce((sum, item) => sum + calcItemPrice(item), 0);
+              return (
+                <View key={group.packId} style={[styles.packGroupCard, themed.card]}>
+                  <TouchableOpacity style={styles.packGroupHeader} activeOpacity={0.8} onPress={() => togglePackExpand(group.packId)}>
+                    {group.packImage && <Image source={{ uri: group.packImage }} style={styles.packGroupImg} resizeMode="cover" />}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.packGroupName, themed.textPrimary]}>{group.packName}</Text>
+                      <Text style={styles.packGroupMeta}>{group.items.length} items · {'\u20B9'}{packTotal}</Text>
+                    </View>
+                    <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.text.muted} />
+                  </TouchableOpacity>
+                  {isExpanded && (
+                    <View style={styles.packGroupItems}>
+                      {group.items.map((item, idx) => (
+                        <View key={`${item.id}_${idx}`}>{renderItem({ item })}</View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+            {/* Individual items */}
+            {individualItems.map((item, idx) => (
               <View key={`${item.id}_${idx}`}>
                 {renderItem({ item })}
               </View>
@@ -235,6 +288,12 @@ const styles = StyleSheet.create({
   cartScrollHint: { fontSize: 11, color: COLORS.text.muted, fontStyle: 'italic' },
   cartItemsScrollWrap: { borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', marginBottom: SPACING.sm },
   cartItemsScroll: { maxHeight: 420 },
+  packGroupCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, marginBottom: SPACING.sm, overflow: 'hidden', ...SHADOW.sm },
+  packGroupHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: SPACING.md },
+  packGroupImg: { width: 44, height: 44, borderRadius: RADIUS.md },
+  packGroupName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
+  packGroupMeta: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  packGroupItems: { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 4, paddingHorizontal: 4 },
   itemCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, ...SHADOW.sm },
   itemImageWrap: { width: 60, height: 60, borderRadius: RADIUS.md, overflow: 'hidden' },
   itemImage: { width: '100%', height: '100%' },

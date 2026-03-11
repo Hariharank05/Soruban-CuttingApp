@@ -158,7 +158,7 @@ export default function CreatePackScreen() {
 
   // ── Main render ──────────────────────────────────────
   return (
-    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top']}>
+    <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle={themed.isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
@@ -343,8 +343,7 @@ export default function CreatePackScreen() {
           </View>
         )}
 
-        {/* Spacer for bottom buttons */}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* Bottom action buttons */}
@@ -634,13 +633,10 @@ const styles = StyleSheet.create({
 
   // Bottom bar
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     paddingHorizontal: SPACING.base,
     paddingVertical: SPACING.md,
+    paddingBottom: SPACING.lg,
     borderTopWidth: 1,
     gap: SPACING.sm,
     ...SHADOW.floating,

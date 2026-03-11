@@ -316,35 +316,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* ━━━ 4. POPULAR ITEMS (compact 4-item grid) ━━━ */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, themed.textPrimary, { marginTop: 0, marginBottom: 0 }]}>Popular Items</Text>
-          <TouchableOpacity onPress={() => router.push('/browse' as any)}><Text style={styles.viewAllLink}>View All</Text></TouchableOpacity>
-        </View>
-        <View style={styles.popularGrid}>
-          {popularProducts.slice(0, 4).map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.productCard, { width: cardW }, themed.card]}
-              activeOpacity={0.85}
-              onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
-            >
-              <View style={styles.productImageWrap}>
-                <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
-              </View>
-              <View style={styles.productBody}>
-                <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.productUnit}>{item.unit}</Text>
-                <View style={styles.priceAddRow}>
-                  <Text style={styles.productPrice}>{'\u20B9'}{item.price}</Text>
-                  <AddToCartButton item={item} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ━━━ 5. DISH PACKS (banner + carousel) ━━━ */}
+        {/* ━━━ 4. DISH PACKS (banner + carousel) ━━━ */}
         <TouchableOpacity style={styles.packsBanner} onPress={() => router.push('/(tabs)/packs')} activeOpacity={0.85}>
           <LinearGradient colors={COLORS.gradient.green} style={styles.packsGrad}>
             <View style={styles.packsContent}>
@@ -451,6 +423,34 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* ━━━ 9. POPULAR ITEMS (compact 4-item grid) ━━━ */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, themed.textPrimary, { marginTop: 0, marginBottom: 0 }]}>Popular Items</Text>
+          <TouchableOpacity onPress={() => router.push('/browse' as any)}><Text style={styles.viewAllLink}>View All</Text></TouchableOpacity>
+        </View>
+        <View style={styles.popularGrid}>
+          {popularProducts.slice(0, 4).map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.productCard, { width: cardW }, themed.card]}
+              activeOpacity={0.85}
+              onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
+            >
+              <View style={styles.productImageWrap}>
+                <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
+              </View>
+              <View style={styles.productBody}>
+                <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.productUnit}>{item.unit}</Text>
+                <View style={styles.priceAddRow}>
+                  <Text style={styles.productPrice}>{'\u20B9'}{item.price}</Text>
+                  <AddToCartButton item={item} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>

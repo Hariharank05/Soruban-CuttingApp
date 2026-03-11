@@ -29,7 +29,7 @@ export default function ProfileScreen() {
   const { orders } = useOrders();
   const totalOrders = orders.length;
   const totalSaved = orders.reduce((sum, o) => sum + (o.discount || 0), 0);
-  const activeSubscriptions = orders.filter(o => o.subscription?.status === 'active');
+  const activeSubscriptions = orders.filter(o => o.subscription && (o.subscription.status === 'active' || o.subscription.status === 'paused'));
   const themed = useThemedStyles();
   const { loyalty } = useLoyalty();
   const { familyMembers } = useDiet();
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
           <View style={styles.recentSection}>
             <View style={styles.recentHeader}>
               <Text style={[styles.recentTitle, themed.textPrimary]}>My Subscriptions</Text>
-              <View style={styles.subCountBadge}><Text style={styles.subCountText}>{activeSubscriptions.length} active</Text></View>
+              <View style={styles.subCountBadge}><Text style={styles.subCountText}>{activeSubscriptions.length} subscription{activeSubscriptions.length !== 1 ? 's' : ''}</Text></View>
             </View>
             {activeSubscriptions.map(order => {
               const sub = order.subscription!;
@@ -118,7 +118,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.subCardTitle}>{freqLabel} Subscription</Text>
-                      <View style={styles.subActiveBadge}><Text style={styles.subActiveText}>Active</Text></View>
+                      {sub.status === 'paused' ? (
+                        <View style={styles.subPausedBadge}><Text style={styles.subPausedText}>Paused</Text></View>
+                      ) : (
+                        <View style={styles.subActiveBadge}><Text style={styles.subActiveText}>Active</Text></View>
+                      )}
                     </View>
                     <Text style={styles.subCardDetail}>{scheduleDetail} at {sub.preferredTime}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -260,6 +264,8 @@ const styles = StyleSheet.create({
   subCardTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text.primary },
   subActiveBadge: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 2 },
   subActiveText: { fontSize: 9, fontWeight: '700', color: '#4CAF50' },
+  subPausedBadge: { backgroundColor: '#FFF8E1', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 2 },
+  subPausedText: { fontSize: 9, fontWeight: '700', color: '#F57C00' },
   subCardDetail: { fontSize: 11, color: COLORS.text.secondary, marginTop: 2 },
   subCardItems: { fontSize: 11, color: COLORS.text.muted, marginTop: 1 },
   subSkippedCount: { fontSize: 10, fontWeight: '700', color: COLORS.status.error },

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, Platform } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, Platform, Modal, Image } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -13,7 +13,9 @@ import { useDiet } from '@/context/DietContext';
 import { useLoyalty, POINTS_PER_RUPEE } from '@/context/LoyaltyContext';
 import { getCutLabel, getCutFee } from '@/data/cutTypes';
 import deliverySlotsData from '@/data/deliverySlots.json';
-import type { Subscription, PaymentMethod } from '@/types';
+import products from '@/data/products.json';
+import { DISH_PACKS } from '@/data/dishPacks';
+import type { Subscription, PaymentMethod, WeekDay, WeeklyPlan } from '@/types';
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTHLY_DATE_OPTIONS = [1, 5, 10, 15, 20, 25];
@@ -43,6 +45,111 @@ const TIME_SLOTS = [
   { id: 'slot_5pm', label: '5:00 PM - 7:00 PM' },
   { id: 'slot_7pm', label: '7:00 PM - 9:00 PM' },
 ];
+
+// Weekly Plan Setup Modal Styles
+const wpStyles = StyleSheet.create({
+  summaryBanner: { borderRadius: RADIUS.lg, padding: SPACING.lg, marginBottom: SPACING.md },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  summaryItem: { alignItems: 'center', gap: 4 },
+  summaryValue: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  summaryLabel: { fontSize: 10, color: 'rgba(255,255,255,0.75)' },
+  summaryDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  infoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#E3F2FD', borderRadius: RADIUS.md, padding: 12, marginBottom: SPACING.md },
+  infoText: { flex: 1, fontSize: 12, color: '#1565C0', lineHeight: 17 },
+  dayTabsContainer: { gap: 8, paddingVertical: 2 },
+  dayTab: { width: 56, height: 64, borderRadius: RADIUS.md, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', ...SHADOW.sm },
+  dayTabActive: { backgroundColor: COLORS.primary },
+  dayTabInactive: { backgroundColor: '#F5F5F5', opacity: 0.7 },
+  dayTabText: { fontSize: 13, fontWeight: '700', color: COLORS.text.secondary },
+  dayTabTextActive: { color: '#FFF' },
+  dayTabTextInactive: { color: '#BDBDBD' },
+  dayBadge: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.full, paddingHorizontal: 6, paddingVertical: 1, marginTop: 2 },
+  dayBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
+  dayBadgeText: { fontSize: 9, fontWeight: '700', color: COLORS.primary },
+  dayBadgeTextActive: { color: '#FFF' },
+  dayCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
+  dayCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+  dayCardTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text.primary },
+  dayCardSub: { fontSize: 12, color: COLORS.text.muted, marginTop: 2 },
+  toggleBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: '#E0E0E0', backgroundColor: '#FAFAFA' },
+  toggleBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
+  toggleBtnText: { fontSize: 12, fontWeight: '700', color: '#999' },
+  toggleBtnTextActive: { color: '#FFF' },
+  emptyDay: { alignItems: 'center', paddingVertical: SPACING.xl },
+  emptyDayText: { fontSize: 13, color: COLORS.text.muted, marginTop: SPACING.sm },
+  addFromCartBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 10, marginTop: SPACING.md },
+  addFromCartBtnText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  itemRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  itemImage: { width: 44, height: 44, borderRadius: 10 },
+  itemName: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
+  itemUnit: { fontSize: 11, color: COLORS.text.muted, marginTop: 1 },
+  cutBadge: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 1, marginTop: 3, alignSelf: 'flex-start' },
+  cutBadgeText: { fontSize: 9, fontWeight: '700', color: COLORS.primary },
+  qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 8 },
+  qtyBtn: { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+  qtyText: { fontSize: 14, fontWeight: '700', minWidth: 20, textAlign: 'center' },
+  removeBtn: { padding: 4 },
+  quickActions: { flexDirection: 'row', gap: 10, marginBottom: SPACING.md },
+  quickActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.md, ...SHADOW.sm },
+  quickActionText: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary },
+  overviewCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
+  overviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.md },
+  overviewTitle: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
+  overviewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  overviewDayBadge: { width: 40, height: 28, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  overviewDayBadgeActive: { backgroundColor: '#E8F5E9' },
+  overviewDayBadgeOff: { backgroundColor: '#F5F5F5' },
+  overviewDayText: { fontSize: 11, fontWeight: '700', color: '#BDBDBD' },
+  overviewDayTextActive: { color: COLORS.primary },
+  overviewInfo: { flex: 1, fontSize: 12, color: COLORS.text.muted },
+  detailsCard: { backgroundColor: '#F0FAF0', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, borderWidth: 1, borderColor: '#C8E6C9' },
+  detailsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: SPACING.sm },
+  detailsTitle: { fontSize: 14, fontWeight: '800', color: COLORS.primary },
+  detailsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#C8E6C9' },
+  detailsLabel: { fontSize: 12, color: COLORS.text.muted },
+  detailsValue: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary },
+  // Add action buttons row
+  addActionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: SPACING.md },
+  addActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF' },
+  addActionBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  // Product picker
+  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.base, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  pickerTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text.primary },
+  pickerSelectedCount: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: SPACING.base, paddingVertical: 8, backgroundColor: '#E8F5E9' },
+  pickerCountText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  pickerRowSelected: { backgroundColor: '#E8F5E9' },
+  pickerImage: { width: 44, height: 44, borderRadius: 10 },
+  pickerCheckbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+  pickerCheckboxActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  pickerBottomBar: { paddingHorizontal: SPACING.base, paddingVertical: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
+  pickerConfirmBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingVertical: 14 },
+  pickerConfirmText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  // Pack picker
+  packPickerSubtitle: { fontSize: 12, color: COLORS.text.muted, paddingHorizontal: SPACING.base, paddingTop: 8, paddingBottom: 4 },
+  packCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, ...SHADOW.sm },
+  packImage: { width: 70, height: 70, borderRadius: 12 },
+  packName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
+  packTag: { backgroundColor: '#FFF8E1', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 2 },
+  packTagText: { fontSize: 9, fontWeight: '700', color: '#F57C00' },
+  packDesc: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  packItems: { fontSize: 10, color: COLORS.text.secondary, marginTop: 3, lineHeight: 14 },
+  packPrice: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  packServes: { fontSize: 10, color: COLORS.text.muted },
+  packItemCount: { fontSize: 10, fontWeight: '600', color: COLORS.text.secondary, backgroundColor: '#F5F5F5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.sm },
+});
+
+// Quick Action Button Styles
+const qaStyles = StyleSheet.create({
+  bar: { flexDirection: 'row', gap: 8, paddingHorizontal: SPACING.base, paddingTop: SPACING.sm, paddingBottom: 4, backgroundColor: 'transparent' },
+  walletBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E8F5E9', borderRadius: RADIUS.lg, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1.5, borderColor: '#C8E6C9' },
+  subBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF8E1', borderRadius: RADIUS.lg, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1.5, borderColor: '#FFE082' },
+  iconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#C8E6C9', justifyContent: 'center', alignItems: 'center' },
+  iconWrapSub: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFE082', justifyContent: 'center', alignItems: 'center' },
+  btnLabel: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary },
+  btnSub: { fontSize: 10, color: COLORS.text.muted, marginTop: 1 },
+});
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -75,6 +182,146 @@ export default function CheckoutScreen() {
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftMessage, setGiftMessage] = useState('');
   const [giftPhone, setGiftPhone] = useState('');
+
+  // Weekly Plan Setup Modal State
+  const PLAN_WEEKDAYS: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const PLAN_DAY_LABELS: Record<WeekDay, string> = {
+    Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday',
+    Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
+  };
+  const [showWeeklyPlanModal, setShowWeeklyPlanModal] = useState(false);
+  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => {
+    const plan = {} as WeeklyPlan;
+    for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as WeekDay[]) {
+      plan[day] = { day, items: [], isActive: true };
+    }
+    return plan;
+  });
+  const [planSelectedDay, setPlanSelectedDay] = useState<WeekDay>('Mon');
+  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [showPackPicker, setShowPackPicker] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+
+  const toggleProductSelection = useCallback((productId: string) => {
+    setSelectedProductIds(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }, []);
+
+  const confirmProductSelection = useCallback(() => {
+    const newItems = Array.from(selectedProductIds).map(id => {
+      const product = (products as any[]).find(p => p.id === id);
+      return {
+        productId: id,
+        name: product?.name || 'Unknown',
+        quantity: 1,
+        unit: product?.unit || '1 kg',
+      };
+    });
+    setWeeklyPlan(prev => {
+      const existing = prev[planSelectedDay].items;
+      const existingIds = new Set(existing.map(i => i.productId));
+      const toAdd = newItems.filter(i => !existingIds.has(i.productId));
+      return {
+        ...prev,
+        [planSelectedDay]: { ...prev[planSelectedDay], items: [...existing, ...toAdd] },
+      };
+    });
+    setSelectedProductIds(new Set());
+    setShowProductPicker(false);
+  }, [selectedProductIds, planSelectedDay]);
+
+  const addPackToDay = useCallback((pack: typeof DISH_PACKS[0]) => {
+    const packItems = pack.items.map(pi => {
+      const product = (products as any[]).find(p => p.id === pi.productId);
+      return {
+        productId: pi.productId,
+        name: product?.name || 'Unknown',
+        quantity: pi.quantity,
+        unit: product?.unit || '1 kg',
+      };
+    });
+    setWeeklyPlan(prev => {
+      const existing = prev[planSelectedDay].items;
+      const existingIds = new Set(existing.map(i => i.productId));
+      const toAdd = packItems.filter(i => !existingIds.has(i.productId));
+      return {
+        ...prev,
+        [planSelectedDay]: {
+          ...prev[planSelectedDay],
+          items: [...existing, ...toAdd],
+          packId: pack.id,
+          packName: pack.name,
+        },
+      };
+    });
+    setShowPackPicker(false);
+  }, [planSelectedDay]);
+
+  const initWeeklyPlanFromCart = useCallback(() => {
+    const plan = {} as WeeklyPlan;
+    const cartPlanItems = cartItems.map(item => ({
+      productId: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      cutType: item.cutType,
+    }));
+    for (const day of PLAN_WEEKDAYS) {
+      // For weekly: only enable the selected day by default
+      // For monthly/daily: enable all days
+      const isActive = subFrequency === 'weekly' ? day === subWeeklyDay : true;
+      plan[day] = { day, items: isActive ? [...cartPlanItems] : [], isActive };
+    }
+    setWeeklyPlan(plan);
+    setPlanSelectedDay(subFrequency === 'weekly' ? (subWeeklyDay as WeekDay) : 'Mon');
+  }, [cartItems, subFrequency, subWeeklyDay]);
+
+  const togglePlanDay = useCallback((day: WeekDay) => {
+    setWeeklyPlan(prev => ({
+      ...prev,
+      [day]: { ...prev[day], isActive: !prev[day].isActive },
+    }));
+  }, []);
+
+  const updatePlanItemQty = useCallback((day: WeekDay, index: number, delta: number) => {
+    setWeeklyPlan(prev => {
+      const items = [...prev[day].items];
+      const newQty = items[index].quantity + delta;
+      if (newQty < 1) return prev;
+      items[index] = { ...items[index], quantity: newQty };
+      return { ...prev, [day]: { ...prev[day], items } };
+    });
+  }, []);
+
+  const removePlanItem = useCallback((day: WeekDay, index: number) => {
+    setWeeklyPlan(prev => {
+      const items = [...prev[day].items];
+      items.splice(index, 1);
+      return { ...prev, [day]: { ...prev[day], items } };
+    });
+  }, []);
+
+  const copyPlanToAllDays = useCallback((fromDay: WeekDay) => {
+    setWeeklyPlan(prev => {
+      const updated = { ...prev };
+      for (const day of PLAN_WEEKDAYS) {
+        if (day !== fromDay && updated[day].isActive) {
+          updated[day] = { ...prev[fromDay], day, isActive: true };
+        }
+      }
+      return updated;
+    });
+  }, []);
+
+  const planActiveDays = useMemo(() =>
+    PLAN_WEEKDAYS.filter(d => weeklyPlan[d].isActive).length
+  , [weeklyPlan]);
+
+  const planCurrentDayItems = weeklyPlan[planSelectedDay];
 
   const TIP_OPTIONS = [0, 10, 20, 30, 50];
 
@@ -109,6 +356,14 @@ export default function CheckoutScreen() {
 
   const handlePlaceOrder = async () => {
     if (cartItems.length === 0) return;
+
+    // Show weekly plan setup modal for subscription orders before placing
+    if (orderType === 'subscribe' && !showWeeklyPlanModal) {
+      initWeeklyPlanFromCart();
+      setShowWeeklyPlanModal(true);
+      return;
+    }
+
     setPlacing(true);
     try {
       // Deduct wallet if applicable
@@ -136,6 +391,7 @@ export default function CheckoutScreen() {
         status: 'active',
         skippedDeliveries: [],
         cutoffHours: 10,
+        weeklyPlan: orderType === 'subscribe' ? weeklyPlan : undefined,
       } : undefined;
       const order = await createOrder({
         items: cartItems, subtotal, cuttingCharges: cuttingTotal, deliveryFee: effectiveDeliveryFee, discount: 0,
@@ -145,6 +401,7 @@ export default function CheckoutScreen() {
         walletAmountUsed: walletDeduction > 0 ? walletDeduction : undefined,
       });
       clearCart();
+      setShowWeeklyPlanModal(false);
       await earnPoints(Math.floor(total * POINTS_PER_RUPEE), `Order #${order.id}`, order.id);
       const walletMsg = walletDeduction > 0 ? ` ₹${walletDeduction} paid from wallet.` : '';
       const remainMsg = remainingToPay > 0 && walletDeduction > 0 ? ` ₹${remainingToPay} via ${payment === 'upi' ? 'UPI' : 'Cash on Delivery'}.` : '';
@@ -490,10 +747,13 @@ export default function CheckoutScreen() {
           )}
         </View>
 
-        {/* Delivery Tip */}
-        <View style={[styles.tipSection, themed.card]}>
-          <Text style={[styles.tipTitle, themed.textPrimary]}>Tip your delivery partner</Text>
-          <Text style={styles.tipDesc}>100% of tip goes to your delivery partner</Text>
+        {/* Delivery Tip + Options */}
+        <View style={[styles.extrasCard, themed.card]}>
+          <View style={styles.extrasRow}>
+            <Icon name="hand-heart" size={18} color={COLORS.green} />
+            <Text style={[styles.extrasTitle, themed.textPrimary]}>Tip your delivery partner</Text>
+          </View>
+          <Text style={styles.extrasDesc}>100% of tip goes to your delivery partner</Text>
           <View style={styles.tipRow}>
             {TIP_OPTIONS.map(t => (
               <TouchableOpacity key={t} style={[styles.tipChip, deliveryTip === t && styles.tipChipActive]} onPress={() => setDeliveryTip(t)}>
@@ -501,39 +761,428 @@ export default function CheckoutScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          <View style={styles.extrasDivider} />
+
+          <TouchableOpacity style={styles.extrasOptionRow} onPress={() => setContactlessDelivery(!contactlessDelivery)}>
+            <Icon name="hand-wave" size={18} color={contactlessDelivery ? COLORS.green : COLORS.text.muted} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.extrasOptionTitle, themed.textPrimary]}>Contactless Delivery</Text>
+              <Text style={styles.extrasOptionDesc}>Leave at doorstep</Text>
+            </View>
+            <Icon name={contactlessDelivery ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={contactlessDelivery ? COLORS.green : COLORS.text.muted} />
+          </TouchableOpacity>
+
+          <View style={styles.extrasDivider} />
+
+          <TouchableOpacity style={styles.extrasOptionRow} onPress={() => setIsGiftOrder(!isGiftOrder)}>
+            <Icon name="gift-outline" size={18} color={isGiftOrder ? '#E91E63' : COLORS.text.muted} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.extrasOptionTitle, themed.textPrimary]}>Send as Gift</Text>
+            </View>
+            <Icon name={isGiftOrder ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={isGiftOrder ? '#E91E63' : COLORS.text.muted} />
+          </TouchableOpacity>
+          {isGiftOrder && (
+            <View style={styles.giftForm}>
+              <TextInput style={[styles.giftInput, themed.inputBg]} placeholder="Recipient Name" value={giftRecipient} onChangeText={setGiftRecipient} placeholderTextColor={COLORS.text.muted} />
+              <TextInput style={[styles.giftInput, themed.inputBg]} placeholder="Recipient Phone" value={giftPhone} onChangeText={setGiftPhone} keyboardType="phone-pad" placeholderTextColor={COLORS.text.muted} />
+              <TextInput style={[styles.giftInput, themed.inputBg]} placeholder="Gift Message (optional)" value={giftMessage} onChangeText={setGiftMessage} placeholderTextColor={COLORS.text.muted} />
+            </View>
+          )}
         </View>
-
-        <TouchableOpacity style={[styles.contactlessRow, themed.card]} onPress={() => setContactlessDelivery(!contactlessDelivery)}>
-          <Icon name="hand-wave" size={20} color={contactlessDelivery ? COLORS.green : COLORS.text.muted} />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[styles.contactlessTitle, themed.textPrimary]}>Contactless Delivery</Text>
-            <Text style={styles.contactlessDesc}>Leave at doorstep</Text>
-          </View>
-          <Icon name={contactlessDelivery ? 'checkbox-marked' : 'checkbox-blank-outline'} size={24} color={contactlessDelivery ? COLORS.green : COLORS.text.muted} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.giftToggleRow, themed.card]} onPress={() => setIsGiftOrder(!isGiftOrder)}>
-          <Icon name="gift-outline" size={20} color={isGiftOrder ? '#E91E63' : COLORS.text.muted} />
-          <Text style={[styles.giftToggleText, themed.textPrimary]}>Send as Gift</Text>
-          <Icon name={isGiftOrder ? 'checkbox-marked' : 'checkbox-blank-outline'} size={24} color={isGiftOrder ? '#E91E63' : COLORS.text.muted} />
-        </TouchableOpacity>
-        {isGiftOrder && (
-          <View style={[styles.giftForm, themed.card]}>
-            <TextInput style={[styles.giftInput, themed.inputBg]} placeholder="Recipient Name" value={giftRecipient} onChangeText={setGiftRecipient} placeholderTextColor={COLORS.text.muted} />
-            <TextInput style={[styles.giftInput, themed.inputBg]} placeholder="Recipient Phone" value={giftPhone} onChangeText={setGiftPhone} keyboardType="phone-pad" placeholderTextColor={COLORS.text.muted} />
-            <TextInput style={[styles.giftInput, themed.inputBg]} placeholder="Gift Message (optional)" value={giftMessage} onChangeText={setGiftMessage} placeholderTextColor={COLORS.text.muted} />
-          </View>
-        )}
 
         <View style={{ height: 20 }} />
       </ScrollView>
 
+      {/* Quick Action Buttons - Wallet & Subscription */}
+      {/* <View style={qaStyles.bar}>
+        <TouchableOpacity style={qaStyles.walletBtn} onPress={() => router.push('/wallet' as any)}>
+          <View style={qaStyles.iconWrap}>
+            <Icon name="wallet" size={16} color={COLORS.green} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={qaStyles.btnLabel}>Wallet</Text>
+            <Text style={qaStyles.btnSub}>{'\u20B9'}{walletBalance}</Text>
+          </View>
+          <Icon name="chevron-right" size={16} color={COLORS.text.muted} />
+        </TouchableOpacity>
+        <TouchableOpacity style={qaStyles.subBtn} onPress={() => router.push('/subscription-manage' as any)}>
+          <View style={qaStyles.iconWrapSub}>
+            <Icon name="autorenew" size={16} color="#F57C00" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={qaStyles.btnLabel}>Subscriptions</Text>
+            <Text style={qaStyles.btnSub}>Manage Plans</Text>
+          </View>
+          <Icon name="chevron-right" size={16} color={COLORS.text.muted} />
+        </TouchableOpacity>
+      </View> */}
+
       <View style={[styles.orderBar, themed.card]}>
         <View><Text style={[styles.orderBarTotal, themed.textPrimary]}>{'\u20B9'}{total}</Text><Text style={styles.orderBarSub}>{cartItems.length} items | {deliveryLabel}</Text></View>
         <TouchableOpacity style={[styles.orderBarBtn, placing && { opacity: 0.6 }]} onPress={handlePlaceOrder} disabled={placing}>
-          <Icon name="cart-check" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : orderType === 'subscribe' ? 'Subscribe & Order' : 'Place Order'}</Text>
+          <Icon name="cart-check" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : orderType === 'subscribe' ? 'Set Up Plan & Order' : 'Place Order'}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Weekly Plan Setup Modal */}
+      <Modal visible={showWeeklyPlanModal} animationType="slide" onRequestClose={() => setShowWeeklyPlanModal(false)}>
+        <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
+          <LinearGradient colors={themed.headerGradient} style={styles.header}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity onPress={() => setShowWeeklyPlanModal(false)} style={styles.backBtn}>
+                <Icon name="arrow-left" size={24} color={themed.colors.text.primary} />
+              </TouchableOpacity>
+              <Text style={[styles.headerTitle, themed.textPrimary]}>Set Up {subFrequency === 'weekly' ? 'Weekly' : subFrequency === 'monthly' ? 'Monthly' : 'Daily'} Plan</Text>
+              <View style={{ width: 40 }} />
+            </View>
+          </LinearGradient>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+            {/* Plan Summary Banner */}
+            <LinearGradient colors={COLORS.gradient.primary} style={wpStyles.summaryBanner}>
+              <View style={wpStyles.summaryRow}>
+                <View style={wpStyles.summaryItem}>
+                  <Icon name="calendar-check" size={20} color="#FFF" />
+                  <Text style={wpStyles.summaryValue}>{planActiveDays}</Text>
+                  <Text style={wpStyles.summaryLabel}>Active Days</Text>
+                </View>
+                <View style={wpStyles.summaryDivider} />
+                <View style={wpStyles.summaryItem}>
+                  <Icon name="package-variant" size={20} color="#FFF" />
+                  <Text style={wpStyles.summaryValue}>{cartItems.length}</Text>
+                  <Text style={wpStyles.summaryLabel}>Items</Text>
+                </View>
+                <View style={wpStyles.summaryDivider} />
+                <View style={wpStyles.summaryItem}>
+                  <Icon name="tag" size={20} color="#FFF" />
+                  <Text style={wpStyles.summaryValue}>{subFrequency === 'daily' ? '10%' : subFrequency === 'weekly' ? '15%' : '20%'}</Text>
+                  <Text style={wpStyles.summaryLabel}>Savings</Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            {/* Info Banner */}
+            <View style={wpStyles.infoBanner}>
+              <Icon name="information-outline" size={16} color={COLORS.primary} />
+              <Text style={wpStyles.infoText}>
+                Customize your {subFrequency} delivery plan. Toggle days on/off and adjust items per day. Your cart items are pre-filled for each active day.
+              </Text>
+            </View>
+
+            {/* Day Selector Tabs */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={wpStyles.dayTabsContainer} style={{ marginBottom: SPACING.md }}>
+              {PLAN_WEEKDAYS.map(day => {
+                const plan = weeklyPlan[day];
+                const isSelected = day === planSelectedDay;
+                const itemCount = plan.items.length;
+                return (
+                  <TouchableOpacity
+                    key={day}
+                    style={[wpStyles.dayTab, isSelected && wpStyles.dayTabActive, !plan.isActive && wpStyles.dayTabInactive]}
+                    onPress={() => setPlanSelectedDay(day)}
+                  >
+                    <Text style={[wpStyles.dayTabText, isSelected && wpStyles.dayTabTextActive, !plan.isActive && wpStyles.dayTabTextInactive]}>
+                      {day}
+                    </Text>
+                    {plan.isActive && itemCount > 0 && (
+                      <View style={[wpStyles.dayBadge, isSelected && wpStyles.dayBadgeActive]}>
+                        <Text style={[wpStyles.dayBadgeText, isSelected && wpStyles.dayBadgeTextActive]}>{itemCount}</Text>
+                      </View>
+                    )}
+                    {!plan.isActive && <Icon name="close-circle" size={12} color="#BDBDBD" style={{ marginTop: 2 }} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Selected Day Card */}
+            <View style={[wpStyles.dayCard, themed.card]}>
+              <View style={wpStyles.dayCardHeader}>
+                <View>
+                  <Text style={[wpStyles.dayCardTitle, themed.textPrimary]}>{PLAN_DAY_LABELS[planSelectedDay]}</Text>
+                  <Text style={wpStyles.dayCardSub}>
+                    {planCurrentDayItems.isActive
+                      ? planCurrentDayItems.items.length > 0
+                        ? `${planCurrentDayItems.items.length} items`
+                        : 'No items - add from your cart'
+                      : 'No delivery on this day'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[wpStyles.toggleBtn, planCurrentDayItems.isActive && wpStyles.toggleBtnActive]}
+                  onPress={() => togglePlanDay(planSelectedDay)}
+                >
+                  <Icon name={planCurrentDayItems.isActive ? 'check-circle' : 'close-circle-outline'} size={16} color={planCurrentDayItems.isActive ? '#FFF' : '#999'} />
+                  <Text style={[wpStyles.toggleBtnText, planCurrentDayItems.isActive && wpStyles.toggleBtnTextActive]}>
+                    {planCurrentDayItems.isActive ? 'Active' : 'Off'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {planCurrentDayItems.isActive && (
+                <>
+                  {/* Add Products/Packs Action Buttons */}
+                  <View style={wpStyles.addActionRow}>
+                    <TouchableOpacity
+                      style={wpStyles.addActionBtn}
+                      onPress={() => {
+                        setSelectedProductIds(new Set());
+                        setShowProductPicker(true);
+                      }}
+                    >
+                      <Icon name="plus-circle" size={16} color={COLORS.primary} />
+                      <Text style={wpStyles.addActionBtnText}>Add Products</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[wpStyles.addActionBtn, { borderColor: '#FFE082', backgroundColor: '#FFFDE7' }]}
+                      onPress={() => setShowPackPicker(true)}
+                    >
+                      <Icon name="package-variant" size={16} color="#F57C00" />
+                      <Text style={[wpStyles.addActionBtnText, { color: '#F57C00' }]}>Add Pack</Text>
+                    </TouchableOpacity>
+                    {cartItems.length > 0 && (
+                      <TouchableOpacity
+                        style={[wpStyles.addActionBtn, { borderColor: '#C8E6C9', backgroundColor: '#E8F5E9' }]}
+                        onPress={() => {
+                          const cartPlanItems = cartItems.map(item => ({
+                            productId: item.id,
+                            name: item.name,
+                            quantity: item.quantity,
+                            unit: item.unit,
+                            cutType: item.cutType,
+                          }));
+                          setWeeklyPlan(prev => {
+                            const existing = prev[planSelectedDay].items;
+                            const existingIds = new Set(existing.map(i => i.productId));
+                            const toAdd = cartPlanItems.filter(i => !existingIds.has(i.productId));
+                            return {
+                              ...prev,
+                              [planSelectedDay]: { ...prev[planSelectedDay], items: [...existing, ...toAdd] },
+                            };
+                          });
+                        }}
+                      >
+                        <Icon name="cart-plus" size={16} color={COLORS.green} />
+                        <Text style={[wpStyles.addActionBtnText, { color: COLORS.green }]}>From Cart</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {planCurrentDayItems.items.length === 0 && (
+                    <View style={wpStyles.emptyDay}>
+                      <Icon name="cart-outline" size={32} color={COLORS.text.muted} />
+                      <Text style={wpStyles.emptyDayText}>No items for this day</Text>
+                      <Text style={{ fontSize: 11, color: COLORS.text.muted, textAlign: 'center', marginTop: 4 }}>Use buttons above to add products or a dish pack</Text>
+                    </View>
+                  )}
+
+                  {planCurrentDayItems.items.map((item, index) => {
+                    const product = (products as any[]).find(p => p.id === item.productId);
+                    return (
+                      <View key={`${item.productId}-${index}`} style={[wpStyles.itemRow, index < planCurrentDayItems.items.length - 1 && wpStyles.itemRowBorder]}>
+                        {product?.image && <Image source={{ uri: product.image }} style={wpStyles.itemImage} />}
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={[wpStyles.itemName, themed.textPrimary]}>{item.name}</Text>
+                          <Text style={wpStyles.itemUnit}>{item.unit}</Text>
+                          {item.cutType && (
+                            <View style={wpStyles.cutBadge}>
+                              <Text style={wpStyles.cutBadgeText}>{getCutLabel(item.cutType)}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={wpStyles.qtyControls}>
+                          <TouchableOpacity style={wpStyles.qtyBtn} onPress={() => updatePlanItemQty(planSelectedDay, index, -1)}>
+                            <Icon name="minus" size={14} color={COLORS.text.secondary} />
+                          </TouchableOpacity>
+                          <Text style={[wpStyles.qtyText, themed.textPrimary]}>{item.quantity}</Text>
+                          <TouchableOpacity style={wpStyles.qtyBtn} onPress={() => updatePlanItemQty(planSelectedDay, index, 1)}>
+                            <Icon name="plus" size={14} color={COLORS.primary} />
+                          </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity style={wpStyles.removeBtn} onPress={() => removePlanItem(planSelectedDay, index)}>
+                          <Icon name="trash-can-outline" size={16} color={COLORS.status.error} />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </View>
+
+            {/* Quick Actions */}
+            <View style={wpStyles.quickActions}>
+              <TouchableOpacity style={[wpStyles.quickActionBtn, themed.card]} onPress={() => copyPlanToAllDays(planSelectedDay)}>
+                <Icon name="content-copy" size={16} color={COLORS.primary} />
+                <Text style={[wpStyles.quickActionText, themed.textPrimary]}>Copy to All Days</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[wpStyles.quickActionBtn, themed.card]}
+                onPress={() => {
+                  setWeeklyPlan(prev => ({
+                    ...prev,
+                    [planSelectedDay]: { ...prev[planSelectedDay], items: [] },
+                  }));
+                }}
+              >
+                <Icon name="eraser" size={16} color="#F57C00" />
+                <Text style={[wpStyles.quickActionText, themed.textPrimary]}>Clear Day</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Weekly Overview */}
+            <View style={[wpStyles.overviewCard, themed.card]}>
+              <View style={wpStyles.overviewHeader}>
+                <Icon name="calendar-text" size={18} color={COLORS.primary} />
+                <Text style={[wpStyles.overviewTitle, themed.textPrimary]}>Weekly Overview</Text>
+              </View>
+              {PLAN_WEEKDAYS.map(day => {
+                const plan = weeklyPlan[day];
+                return (
+                  <View key={day} style={wpStyles.overviewRow}>
+                    <View style={[wpStyles.overviewDayBadge, plan.isActive ? wpStyles.overviewDayBadgeActive : wpStyles.overviewDayBadgeOff]}>
+                      <Text style={[wpStyles.overviewDayText, plan.isActive && wpStyles.overviewDayTextActive]}>{day}</Text>
+                    </View>
+                    <Text style={wpStyles.overviewInfo}>
+                      {!plan.isActive ? 'No delivery' : plan.items.length === 0 ? 'No items' : `${plan.items.length} items`}
+                    </Text>
+                    {plan.isActive && plan.items.length > 0 && (
+                      <Icon name="check-circle" size={16} color={COLORS.primary} />
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Subscription Details Summary */}
+            <View style={[wpStyles.detailsCard, themed.card]}>
+              <View style={wpStyles.detailsHeader}>
+                <Icon name="check-decagram" size={18} color={COLORS.primary} />
+                <Text style={[wpStyles.detailsTitle, themed.textPrimary]}>Plan Details</Text>
+              </View>
+              <View style={wpStyles.detailsRow}><Text style={wpStyles.detailsLabel}>Frequency</Text><Text style={wpStyles.detailsValue}>{subFrequency.charAt(0).toUpperCase() + subFrequency.slice(1)}</Text></View>
+              {subFrequency === 'weekly' && <View style={wpStyles.detailsRow}><Text style={wpStyles.detailsLabel}>Every</Text><Text style={wpStyles.detailsValue}>{subWeeklyDay}</Text></View>}
+              {subFrequency === 'monthly' && <View style={wpStyles.detailsRow}><Text style={wpStyles.detailsLabel}>On dates</Text><Text style={wpStyles.detailsValue}>{subMonthlyDates.join(', ')}</Text></View>}
+              <View style={wpStyles.detailsRow}><Text style={wpStyles.detailsLabel}>Starts</Text><Text style={wpStyles.detailsValue}>{SCHEDULE_DATES.find(d => d.key === subStartDate)?.label || ''}</Text></View>
+              <View style={wpStyles.detailsRow}><Text style={wpStyles.detailsLabel}>Time</Text><Text style={wpStyles.detailsValue}>{TIME_SLOTS.find(t => t.id === subTimeSlot)?.label || ''}</Text></View>
+              <View style={wpStyles.detailsRow}><Text style={wpStyles.detailsLabel}>Delivery Fee</Text><Text style={[wpStyles.detailsValue, { color: COLORS.primary }]}>{'\u20B9'}{effectiveDeliveryFee} (Save {'\u20B9'}{deliveryFee - effectiveDeliveryFee})</Text></View>
+              <View style={[wpStyles.detailsRow, { borderBottomWidth: 0, paddingBottom: 0 }]}><Text style={[wpStyles.detailsLabel, { fontWeight: '700', color: COLORS.text.primary }]}>Total per delivery</Text><Text style={[wpStyles.detailsValue, { fontSize: 15, color: COLORS.primary }]}>{'\u20B9'}{total}</Text></View>
+            </View>
+
+            <View style={{ height: 20 }} />
+          </ScrollView>
+
+          {/* Bottom Action Bar */}
+          <View style={[styles.orderBar, themed.card]}>
+            <View>
+              <Text style={[styles.orderBarTotal, themed.textPrimary]}>{'\u20B9'}{total}</Text>
+              <Text style={styles.orderBarSub}>{planActiveDays} days active | {subFrequency} plan</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.orderBarBtn, placing && { opacity: 0.6 }]}
+              onPress={handlePlaceOrder}
+              disabled={placing}
+            >
+              <Icon name="check-decagram" size={20} color="#FFF" />
+              <Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : 'Confirm & Subscribe'}</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Multi-Select Product Picker Modal */}
+          <Modal visible={showProductPicker} animationType="slide" onRequestClose={() => setShowProductPicker(false)}>
+            <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
+              <View style={wpStyles.pickerHeader}>
+                <Text style={[wpStyles.pickerTitle, themed.textPrimary]}>Select Products</Text>
+                <TouchableOpacity onPress={() => setShowProductPicker(false)}>
+                  <Icon name="close" size={24} color={themed.colors.text.primary} />
+                </TouchableOpacity>
+              </View>
+              <View style={wpStyles.pickerSelectedCount}>
+                <Icon name="check-circle" size={16} color={COLORS.primary} />
+                <Text style={wpStyles.pickerCountText}>{selectedProductIds.size} products selected</Text>
+              </View>
+              <ScrollView contentContainerStyle={{ padding: SPACING.base }}>
+                {(products as any[]).map(item => {
+                  const isSelected = selectedProductIds.has(item.id);
+                  const alreadyInDay = planCurrentDayItems.items.some((i: any) => i.productId === item.id);
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[wpStyles.pickerRow, isSelected && wpStyles.pickerRowSelected, alreadyInDay && { opacity: 0.5 }]}
+                      onPress={() => !alreadyInDay && toggleProductSelection(item.id)}
+                      disabled={alreadyInDay}
+                    >
+                      <Image source={{ uri: item.image }} style={wpStyles.pickerImage} />
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[wpStyles.itemName, themed.textPrimary]}>{item.name}</Text>
+                        <Text style={wpStyles.itemUnit}>{item.unit} · {'\u20B9'}{item.price}</Text>
+                      </View>
+                      <View style={[wpStyles.pickerCheckbox, isSelected && wpStyles.pickerCheckboxActive]}>
+                        {isSelected && <Icon name="check" size={14} color="#FFF" />}
+                        {alreadyInDay && <Icon name="check" size={14} color={COLORS.text.muted} />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {selectedProductIds.size > 0 && (
+                <View style={wpStyles.pickerBottomBar}>
+                  <TouchableOpacity style={wpStyles.pickerConfirmBtn} onPress={confirmProductSelection}>
+                    <Icon name="check-all" size={20} color="#FFF" />
+                    <Text style={wpStyles.pickerConfirmText}>Add {selectedProductIds.size} Products</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </SafeAreaView>
+          </Modal>
+
+          {/* Dish Pack Picker Modal */}
+          <Modal visible={showPackPicker} animationType="slide" onRequestClose={() => setShowPackPicker(false)}>
+            <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
+              <View style={wpStyles.pickerHeader}>
+                <Text style={[wpStyles.pickerTitle, themed.textPrimary]}>Choose a Dish Pack</Text>
+                <TouchableOpacity onPress={() => setShowPackPicker(false)}>
+                  <Icon name="close" size={24} color={themed.colors.text.primary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={wpStyles.packPickerSubtitle}>Select a pack to quickly add all its items to {PLAN_DAY_LABELS[planSelectedDay]}</Text>
+              <ScrollView contentContainerStyle={{ padding: SPACING.base }}>
+                {DISH_PACKS.map(pack => {
+                  const packProducts = pack.items.map(pi => {
+                    const product = (products as any[]).find(p => p.id === pi.productId);
+                    return product?.name || 'Unknown';
+                  });
+                  return (
+                    <TouchableOpacity
+                      key={pack.id}
+                      style={[wpStyles.packCard, themed.card]}
+                      onPress={() => addPackToDay(pack)}
+                    >
+                      <Image source={{ uri: pack.image }} style={wpStyles.packImage} />
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[wpStyles.packName, themed.textPrimary]}>{pack.name}</Text>
+                          {pack.tag && (
+                            <View style={wpStyles.packTag}>
+                              <Text style={wpStyles.packTagText}>{pack.tag}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={wpStyles.packDesc}>{pack.description}</Text>
+                        <Text style={wpStyles.packItems} numberOfLines={2}>{packProducts.join(', ')}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                          <Text style={wpStyles.packPrice}>{'\u20B9'}{pack.price}</Text>
+                          <Text style={wpStyles.packServes}>{pack.serves}</Text>
+                          <Text style={wpStyles.packItemCount}>{pack.items.length} items</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </SafeAreaView>
+          </Modal>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -638,19 +1287,20 @@ const styles = StyleSheet.create({
   walletCheckbox: { width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
   walletCheckboxActive: { backgroundColor: COLORS.green, borderColor: COLORS.green },
   remainingLabel: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary, marginBottom: 6, marginTop: 4 },
-  tipSection: { marginHorizontal: SPACING.base, marginTop: SPACING.md, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
-  tipTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
-  tipDesc: { fontSize: 11, color: COLORS.text.muted, marginTop: 2, marginBottom: SPACING.sm },
+  extrasCard: { marginHorizontal: SPACING.sm, marginTop: SPACING.md, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
+  extrasRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  extrasTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
+  extrasDesc: { fontSize: 11, color: COLORS.text.muted, marginTop: 2, marginBottom: SPACING.sm },
   tipRow: { flexDirection: 'row', gap: 6 },
   tipChip: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
   tipChipActive: { borderColor: COLORS.green, backgroundColor: '#E8F5E9' },
   tipChipText: { fontSize: 11, fontWeight: '700', color: COLORS.text.secondary },
   tipChipTextActive: { color: COLORS.green },
-  contactlessRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: SPACING.base, marginTop: SPACING.sm, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
-  contactlessTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
-  contactlessDesc: { fontSize: 11, color: COLORS.text.muted },
-  giftToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: SPACING.base, marginTop: SPACING.sm, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
-  giftToggleText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
-  giftForm: { marginHorizontal: SPACING.base, marginTop: SPACING.xs, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, gap: SPACING.sm, ...SHADOW.sm },
+  extrasDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
+  extrasOptionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  extrasOptionTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
+  extrasOptionDesc: { fontSize: 11, color: COLORS.text.muted },
+  giftForm: { marginTop: SPACING.sm, gap: SPACING.sm },
   giftInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13 },
 });
+

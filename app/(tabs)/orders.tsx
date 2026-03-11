@@ -100,7 +100,12 @@ export default function OrdersScreen() {
   return (
     <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={themed.headerGradient} style={styles.header}><Text style={[styles.headerTitle, themed.textPrimary]}>{'\uD83D\uDCE6'} My Orders</Text></LinearGradient>
+      <LinearGradient colors={themed.headerGradient} style={styles.header}>
+        <Text style={[styles.headerTitle, themed.textPrimary]}>{'\uD83D\uDCE6'} My Orders</Text>
+        <TouchableOpacity style={styles.calendarBtn} onPress={() => router.push('/order-history-calendar' as any)}>
+          <Icon name="calendar-month" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
+      </LinearGradient>
       {orders.length === 0 ? (
         <View style={styles.empty}>
           <Icon name="clipboard-text-outline" size={64} color={COLORS.text.muted} />
@@ -116,8 +121,9 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingHorizontal: SPACING.base, paddingVertical: SPACING.md },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.base, paddingVertical: SPACING.md },
   headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text.primary },
+  calendarBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center' },
   list: { paddingHorizontal: SPACING.base, paddingTop: SPACING.md, paddingBottom: 40 },
   orderCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

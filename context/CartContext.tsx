@@ -7,7 +7,7 @@ const CART_KEY = '@cutting_cart';
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product, quantity: number, weight?: number, cutType?: CutType, instructions?: string) => void;
+  addToCart: (product: Product, quantity: number, weight?: number, cutType?: CutType, instructions?: string, packId?: string, packName?: string) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   updateCutType: (productId: string, cutType?: CutType) => void;
@@ -46,9 +46,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(CART_KEY, JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = useCallback((product: Product, quantity: number, weight?: number, cutType?: CutType, instructions?: string) => {
+  const addToCart = useCallback((product: Product, quantity: number, weight?: number, cutType?: CutType, instructions?: string, packId?: string, packName?: string) => {
     setCartItems(prev => {
-      const existingIdx = prev.findIndex(i => i.id === product.id && i.cutType === cutType && i.selectedWeight === weight);
+      const existingIdx = prev.findIndex(i => i.id === product.id && i.cutType === cutType && i.selectedWeight === weight && i.packId === packId);
       if (existingIdx >= 0) {
         const updated = [...prev];
         updated[existingIdx] = {
@@ -59,7 +59,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         };
         return updated;
       }
-      return [...prev, { ...product, quantity, selectedWeight: weight, cutType, specialInstructions: instructions }];
+      return [...prev, { ...product, quantity, selectedWeight: weight, cutType, specialInstructions: instructions, packId, packName }];
     });
   }, []);
 

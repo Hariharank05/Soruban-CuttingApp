@@ -38,6 +38,8 @@ export interface CartItem extends Product {
   selectedWeight?: number;
   cutType?: CutType;
   specialInstructions?: string;
+  packId?: string;
+  packName?: string;
 }
 
 export interface DeliverySlot {

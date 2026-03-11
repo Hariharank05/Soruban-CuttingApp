@@ -85,7 +85,7 @@ export default function DishPackDetailScreen() {
       const weight = product.unit.includes('kg') ? getItemWeight(item.productId) : undefined;
       const variantNote = selectedVariant ? `Variant: ${pack?.regionalVariants?.find(v => v.id === selectedVariant)?.name || ''}` : '';
       const fullInstructions = [variantNote, instructions].filter(Boolean).join('. ') || undefined;
-      addToCart(product as Product, qty, weight, cutSelections[item.productId], fullInstructions);
+      addToCart(product as Product, qty, weight, cutSelections[item.productId], fullInstructions, pack?.id, pack?.name);
     });
     router.back();
   };
