@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, Platform, Modal, Image } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useThemedStyles } from '@/src/utils/useThemedStyles';
@@ -153,6 +153,14 @@ const qaStyles = StyleSheet.create({
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    orderType?: string;
+    subFrequency?: string;
+    subWeeklyDay?: string;
+    autoRepeat?: string;
+    subMonthlyDates?: string;
+    selectedDates?: string;
+  }>();
   const themed = useThemedStyles();
   const { cartItems, getSubtotal, getCuttingTotal, clearCart } = useCart();
   const { createOrder } = useOrders();
@@ -173,11 +181,17 @@ export default function CheckoutScreen() {
   const [payment, setPayment] = useState<'cod' | 'upi' | 'wallet'>('cod');
   const [useWalletBalance, setUseWalletBalance] = useState(false);
   const [placing, setPlacing] = useState(false);
-  const [orderType, setOrderType] = useState<'once' | 'subscribe'>('once');
-  const [subFrequency, setSubFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [subWeeklyDay, setSubWeeklyDay] = useState('Mon');
-  const [subMonthlyDates, setSubMonthlyDates] = useState<number[]>([1]);
-  const [subStartDate, setSubStartDate] = useState(SCHEDULE_DATES[1].key);
+  const [orderType, setOrderType] = useState<'once' | 'subscribe'>(params.orderType === 'subscribe' ? 'subscribe' : 'once');
+  const [subFrequency, setSubFrequency] = useState<'daily' | 'weekly' | 'monthly'>(
+    (params.subFrequency as 'daily' | 'weekly' | 'monthly') || 'daily'
+  );
+  const [subWeeklyDay, setSubWeeklyDay] = useState(params.subWeeklyDay || 'Mon');
+  const [subMonthlyDates, setSubMonthlyDates] = useState<number[]>(
+    params.subMonthlyDates ? params.subMonthlyDates.split(',').map(Number) : [1]
+  );
+  const [subStartDate, setSubStartDate] = useState(
+    params.selectedDates ? params.selectedDates.split(',')[0] : SCHEDULE_DATES[1].key
+  );
   const [subTimeSlot, setSubTimeSlot] = useState(TIME_SLOTS[0].id);
 
   const { familyMembers } = useDiet();

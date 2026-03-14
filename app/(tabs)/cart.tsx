@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar, Alert, TextInput, ScrollView } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar, Alert, TextInput, ScrollView, Switch } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,12 @@ import { useCoupons } from '@/context/CouponContext';
 import { useSavedCarts } from '@/context/SavedCartContext';
 import { DISH_PACKS } from '@/data/dishPacks';
 import productsData from '@/data/products.json';
+import type { SubFrequency } from '@/types';
+
+const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+const WEEK_DAY_FULL: Record<string, string> = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
+const MONTHLY_DATE_OPTIONS = [1, 5, 10, 15, 20, 25];
+const SUB_DISCOUNTS: Record<SubFrequency, number> = { daily: 10, weekly: 15, monthly: 20 };
 
 export default function CartScreen() {
   const router = useRouter();
@@ -23,6 +29,53 @@ export default function CartScreen() {
   const [couponCode, setCouponCode] = useState('');
   const [couponMsg, setCouponMsg] = useState('');
   const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set());
+
+  // Subscription state
+  const [orderType, setOrderType] = useState<'once' | 'subscribe'>('once');
+  const [subFrequency, setSubFrequency] = useState<SubFrequency>('weekly');
+  const [subWeeklyDay, setSubWeeklyDay] = useState('Mon');
+  const [subMonthlyDates, setSubMonthlyDates] = useState<number[]>([1]);
+  const [autoRepeatWeekly, setAutoRepeatWeekly] = useState(true);
+  const [calendarMonth, setCalendarMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
+
+  // Calendar helpers
+  const calendarDays = useMemo(() => {
+    const { year, month } = calendarMonth;
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const blanks = (firstDay === 0 ? 6 : firstDay - 1); // Mon-start
+    const days: (number | null)[] = Array(blanks).fill(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    return days;
+  }, [calendarMonth]);
+
+  const calendarLabel = useMemo(() => {
+    const d = new Date(calendarMonth.year, calendarMonth.month);
+    return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  }, [calendarMonth]);
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const toggleCalendarDate = useCallback((day: number) => {
+    const dateStr = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (dateStr < todayStr) return; // can't select past dates
+    setSelectedDates(prev => {
+      const next = new Set(prev);
+      next.has(dateStr) ? next.delete(dateStr) : next.add(dateStr);
+      return next;
+    });
+  }, [calendarMonth, todayStr]);
+
+  const shiftMonth = useCallback((dir: number) => {
+    setCalendarMonth(prev => {
+      let m = prev.month + dir;
+      let y = prev.year;
+      if (m < 0) { m = 11; y--; }
+      if (m > 11) { m = 0; y++; }
+      return { year: y, month: m };
+    });
+  }, []);
 
   const togglePackExpand = (packId: string) => {
     setExpandedPacks(prev => {
@@ -59,7 +112,8 @@ export default function CartScreen() {
   const freeDeliveryProgress = Math.min(subtotal / FREE_DELIVERY_THRESHOLD, 1);
   const couponDiscount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
   const deliveryFee = subtotal > 0 ? 25 : 0;
-  const total = subtotal + deliveryFee;
+  const subDeliveryDiscount = orderType === 'subscribe' ? Math.round(deliveryFee * SUB_DISCOUNTS[subFrequency] / 100) : 0;
+  const total = subtotal + deliveryFee - subDeliveryDiscount;
 
   const suggestions = useMemo(() => {
     const cartIds = cartItems.map(c => c.id);
@@ -226,6 +280,144 @@ export default function CartScreen() {
           </View>
         )}
 
+        {/* ─── Subscribe & Save ─── */}
+        <View style={[styles.subSection, themed.card]}>
+          <View style={styles.subHeaderRow}>
+            <Icon name="calendar-sync" size={20} color={COLORS.primary} />
+            <Text style={[styles.subTitle, themed.textPrimary]}>Subscribe & Save</Text>
+          </View>
+          <Text style={styles.subDesc}>Get regular deliveries with up to 20% off on delivery</Text>
+
+          {/* Order type toggle */}
+          <View style={styles.orderTypeRow}>
+            <TouchableOpacity style={[styles.orderTypeBtn, orderType === 'once' && styles.orderTypeBtnActive]} onPress={() => setOrderType('once')}>
+              <Icon name="cart-outline" size={16} color={orderType === 'once' ? '#FFF' : COLORS.text.secondary} />
+              <Text style={[styles.orderTypeBtnText, orderType === 'once' && styles.orderTypeBtnTextActive]}>One-time</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.orderTypeBtn, orderType === 'subscribe' && styles.orderTypeBtnActive]} onPress={() => setOrderType('subscribe')}>
+              <Icon name="repeat" size={16} color={orderType === 'subscribe' ? '#FFF' : COLORS.text.secondary} />
+              <Text style={[styles.orderTypeBtnText, orderType === 'subscribe' && styles.orderTypeBtnTextActive]}>Subscribe</Text>
+            </TouchableOpacity>
+          </View>
+
+          {orderType === 'subscribe' && (
+            <>
+              {/* Frequency selector */}
+              <Text style={styles.subLabel}>Delivery Frequency</Text>
+              <View style={styles.freqRow}>
+                {(['daily', 'weekly', 'monthly'] as SubFrequency[]).map(freq => (
+                  <TouchableOpacity key={freq} style={[styles.freqPill, subFrequency === freq && styles.freqPillActive]} onPress={() => setSubFrequency(freq)}>
+                    <Text style={[styles.freqPillText, subFrequency === freq && styles.freqPillTextActive]}>
+                      {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                    </Text>
+                    <View style={[styles.freqDiscount, subFrequency === freq && styles.freqDiscountActive]}>
+                      <Text style={[styles.freqDiscountText, subFrequency === freq && styles.freqDiscountTextActive]}>{SUB_DISCOUNTS[freq]}% off</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Weekly: day selector + auto-repeat */}
+              {subFrequency === 'weekly' && (
+                <View style={styles.weekSection}>
+                  <Text style={styles.subLabel}>Delivery Day</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekDayRow}>
+                    {WEEK_DAYS.map(day => (
+                      <TouchableOpacity key={day} style={[styles.weekDayBtn, subWeeklyDay === day && styles.weekDayBtnActive]} onPress={() => setSubWeeklyDay(day)}>
+                        <Text style={[styles.weekDayText, subWeeklyDay === day && styles.weekDayTextActive]}>{day}</Text>
+                        <Text style={[styles.weekDayFull, subWeeklyDay === day && { color: 'rgba(255,255,255,0.8)' }]}>{WEEK_DAY_FULL[day].slice(0, 3)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <View style={styles.autoRepeatRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.autoRepeatLabel, themed.textPrimary]}>Auto-repeat every week</Text>
+                      <Text style={styles.autoRepeatDesc}>Same items delivered every {WEEK_DAY_FULL[subWeeklyDay]}</Text>
+                    </View>
+                    <Switch
+                      value={autoRepeatWeekly}
+                      onValueChange={setAutoRepeatWeekly}
+                      trackColor={{ false: '#E0E0E0', true: '#A5D6A7' }}
+                      thumbColor={autoRepeatWeekly ? COLORS.green : '#BDBDBD'}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Monthly: date chips */}
+              {subFrequency === 'monthly' && (
+                <View style={styles.monthSection}>
+                  <Text style={styles.subLabel}>Delivery Dates (select one or more)</Text>
+                  <View style={styles.monthDateRow}>
+                    {MONTHLY_DATE_OPTIONS.map(d => {
+                      const sel = subMonthlyDates.includes(d);
+                      return (
+                        <TouchableOpacity key={d} style={[styles.monthDateChip, sel && styles.monthDateChipActive]}
+                          onPress={() => setSubMonthlyDates(prev => sel ? prev.filter(x => x !== d) : [...prev, d].sort((a, b) => a - b))}
+                        >
+                          <Text style={[styles.monthDateChipText, sel && styles.monthDateChipTextActive]}>{d}{d === 1 ? 'st' : d === 5 ? 'th' : 'th'}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* Mini Calendar */}
+              <Text style={[styles.subLabel, { marginTop: SPACING.md }]}>
+                {subFrequency === 'daily' ? 'Start Date' : 'Select Delivery Dates'}
+              </Text>
+              <View style={styles.calendarCard}>
+                <View style={styles.calHeaderRow}>
+                  <TouchableOpacity onPress={() => shiftMonth(-1)} style={styles.calArrow}>
+                    <Icon name="chevron-left" size={20} color={COLORS.text.secondary} />
+                  </TouchableOpacity>
+                  <Text style={[styles.calMonthLabel, themed.textPrimary]}>{calendarLabel}</Text>
+                  <TouchableOpacity onPress={() => shiftMonth(1)} style={styles.calArrow}>
+                    <Icon name="chevron-right" size={20} color={COLORS.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.calWeekHeader}>
+                  {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(d => (
+                    <Text key={d} style={styles.calWeekHeaderText}>{d}</Text>
+                  ))}
+                </View>
+                <View style={styles.calGrid}>
+                  {calendarDays.map((day, idx) => {
+                    if (day === null) return <View key={`b${idx}`} style={styles.calCell} />;
+                    const dateStr = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isPast = dateStr < todayStr;
+                    const isToday = dateStr === todayStr;
+                    const isSelected = selectedDates.has(dateStr);
+                    return (
+                      <TouchableOpacity
+                        key={dateStr}
+                        style={[styles.calCell, isToday && styles.calCellToday, isSelected && styles.calCellSelected, isPast && styles.calCellPast]}
+                        onPress={() => toggleCalendarDate(day)}
+                        disabled={isPast}
+                      >
+                        <Text style={[styles.calDayText, isToday && styles.calDayToday, isSelected && styles.calDaySelected, isPast && styles.calDayPast]}>{day}</Text>
+                        {isSelected && <View style={styles.calDot} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {selectedDates.size > 0 && (
+                  <Text style={styles.calSelectedCount}>{selectedDates.size} date{selectedDates.size > 1 ? 's' : ''} selected</Text>
+                )}
+              </View>
+
+              {/* Subscription savings summary */}
+              <View style={styles.subSavingsCard}>
+                <Icon name="tag-outline" size={16} color={COLORS.green} />
+                <Text style={styles.subSavingsText}>
+                  You save {'\u20B9'}{Math.round(deliveryFee * SUB_DISCOUNTS[subFrequency] / 100)}/delivery with {subFrequency} subscription ({SUB_DISCOUNTS[subFrequency]}% off delivery)
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
         <View style={[styles.couponSection, themed.card]}>
           <Text style={[styles.couponTitle, themed.textPrimary]}>Apply Coupon</Text>
           <View style={styles.couponInputRow}>
@@ -271,6 +463,9 @@ export default function CartScreen() {
           <View style={styles.billRow}><Text style={styles.billLabel}>Items Total</Text><Text style={styles.billValue}>{'\u20B9'}{subtotal - cuttingTotal}</Text></View>
           {cuttingTotal > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>{'\uD83D\uDD2A'} Cutting Charges</Text><Text style={[styles.billValue, { color: COLORS.primary }]}>{'\u20B9'}{cuttingTotal}</Text></View>}
           <View style={styles.billRow}><Text style={styles.billLabel}>Delivery Fee</Text><Text style={styles.billValue}>{'\u20B9'}{deliveryFee}</Text></View>
+          {subDeliveryDiscount > 0 && (
+            <View style={styles.billRow}><Text style={[styles.billLabel, { color: COLORS.green }]}>Subscription Discount ({SUB_DISCOUNTS[subFrequency]}%)</Text><Text style={[styles.billValue, { color: COLORS.green }]}>-{'\u20B9'}{subDeliveryDiscount}</Text></View>
+          )}
           <View style={[styles.billRow, styles.billTotal]}><Text style={styles.billTotalLabel}>Total</Text><Text style={styles.billTotalValue}>{'\u20B9'}{total}</Text></View>
         </View>
       </ScrollView>
@@ -279,8 +474,21 @@ export default function CartScreen() {
           <Text style={[styles.checkoutTotal, themed.textPrimary]}>{'\u20B9'}{total}</Text>
           <Text style={styles.checkoutSub}>incl. cutting charges</Text>
         </View>
-        <TouchableOpacity style={styles.checkoutBtn} onPress={() => router.push('/checkout')}>
-          <Text style={styles.checkoutBtnText}>Proceed to Checkout</Text>
+        <TouchableOpacity style={styles.checkoutBtn} onPress={() => {
+          const params: Record<string, string> = {};
+          if (orderType === 'subscribe') {
+            params.orderType = 'subscribe';
+            params.subFrequency = subFrequency;
+            if (subFrequency === 'weekly') {
+              params.subWeeklyDay = subWeeklyDay;
+              params.autoRepeat = autoRepeatWeekly ? '1' : '0';
+            }
+            if (subFrequency === 'monthly') params.subMonthlyDates = subMonthlyDates.join(',');
+            if (selectedDates.size > 0) params.selectedDates = Array.from(selectedDates).sort().join(',');
+          }
+          router.push({ pathname: '/checkout', params });
+        }}>
+          <Text style={styles.checkoutBtnText}>{orderType === 'subscribe' ? 'Subscribe & Checkout' : 'Proceed to Checkout'}</Text>
           <Icon name="chevron-right" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -365,4 +573,60 @@ const styles = StyleSheet.create({
   suggestionImg: { width: 90, height: 60 },
   suggestionName: { fontSize: 10, fontWeight: '600', color: COLORS.text.primary, paddingHorizontal: 4, paddingTop: 4 },
   suggestionPrice: { fontSize: 11, fontWeight: '800', color: COLORS.primary, paddingHorizontal: 4, paddingBottom: 4 },
+  // Subscribe & Save styles
+  subSection: { marginTop: SPACING.md, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
+  subHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  subTitle: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
+  subDesc: { fontSize: 11, color: COLORS.text.muted, marginBottom: SPACING.md },
+  subLabel: { fontSize: 12, fontWeight: '700', color: COLORS.text.secondary, marginBottom: 8 },
+  orderTypeRow: { flexDirection: 'row', gap: 8, marginBottom: SPACING.md },
+  orderTypeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#E0E0E0' },
+  orderTypeBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  orderTypeBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.text.secondary },
+  orderTypeBtnTextActive: { color: '#FFF' },
+  freqRow: { flexDirection: 'row', gap: 8, marginBottom: SPACING.md },
+  freqPill: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: RADIUS.lg, backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#E0E0E0', gap: 4 },
+  freqPillActive: { backgroundColor: '#E8F5E9', borderColor: COLORS.green },
+  freqPillText: { fontSize: 12, fontWeight: '700', color: COLORS.text.secondary },
+  freqPillTextActive: { color: COLORS.green },
+  freqDiscount: { backgroundColor: '#E0E0E0', borderRadius: RADIUS.sm, paddingHorizontal: 6, paddingVertical: 1 },
+  freqDiscountActive: { backgroundColor: COLORS.green },
+  freqDiscountText: { fontSize: 9, fontWeight: '700', color: COLORS.text.muted },
+  freqDiscountTextActive: { color: '#FFF' },
+  weekSection: { marginBottom: SPACING.sm },
+  weekDayRow: { gap: 6, paddingVertical: 2 },
+  weekDayBtn: { width: 52, height: 52, borderRadius: RADIUS.md, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E0E0E0' },
+  weekDayBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  weekDayText: { fontSize: 14, fontWeight: '800', color: COLORS.text.secondary },
+  weekDayTextActive: { color: '#FFF' },
+  weekDayFull: { fontSize: 9, color: COLORS.text.muted, marginTop: 1 },
+  autoRepeatRow: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.md, backgroundColor: '#F1F8E9', borderRadius: RADIUS.md, padding: 12 },
+  autoRepeatLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
+  autoRepeatDesc: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  monthSection: { marginBottom: SPACING.sm },
+  monthDateRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  monthDateChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#E0E0E0' },
+  monthDateChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  monthDateChipText: { fontSize: 12, fontWeight: '700', color: COLORS.text.secondary },
+  monthDateChipTextActive: { color: '#FFF' },
+  // Calendar styles
+  calendarCard: { backgroundColor: '#FAFAFA', borderRadius: RADIUS.lg, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
+  calHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  calMonthLabel: { fontSize: 14, fontWeight: '800', color: COLORS.text.primary },
+  calArrow: { padding: 4 },
+  calWeekHeader: { flexDirection: 'row', marginBottom: 4 },
+  calWeekHeaderText: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700', color: COLORS.text.muted },
+  calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calCell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  calCellToday: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 20 },
+  calCellSelected: { backgroundColor: COLORS.primary, borderRadius: 20 },
+  calCellPast: { opacity: 0.3 },
+  calDayText: { fontSize: 12, fontWeight: '600', color: COLORS.text.primary },
+  calDayToday: { color: COLORS.primary, fontWeight: '800' },
+  calDaySelected: { color: '#FFF', fontWeight: '800' },
+  calDayPast: { color: COLORS.text.muted },
+  calDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#FFF', marginTop: 1 },
+  calSelectedCount: { fontSize: 11, fontWeight: '600', color: COLORS.primary, textAlign: 'center', marginTop: 8 },
+  subSavingsCard: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: SPACING.md, backgroundColor: '#E8F5E9', borderRadius: RADIUS.md, padding: 10 },
+  subSavingsText: { fontSize: 11, fontWeight: '600', color: COLORS.green, flex: 1 },
 });
