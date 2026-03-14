@@ -6,10 +6,15 @@
       "Read(//c/Soruban-Retail/ChopifyReceiver/types/**)",
       "Read(//c/Soruban-Retail/ChopifyReceiver/data/**)",
       "Bash(npx tsc --noEmit)",
-      "Bash(echo \"Exit code: $?\")"
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx expo:*)",
+      "Bash(ls -la /c/Soruban-Retail/SorubanCuttingApp/app/*.tsx)",
+      "Read(//c/Soruban-Retail/**)"
     ],
     "additionalDirectories": [
-      "c:\\Soruban-Retail\\SorubanCuttingApp"
+      "c:\\Soruban-Retail\\SorubanCuttingApp",
+      "c:\\Soruban-Retail"
     ]
   }
 }

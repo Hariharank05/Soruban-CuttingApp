@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   createPackTitle: { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 4 },
   createPackDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 17 },
   createPackIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  templateSection: { marginBottom: SPACING.sm, paddingHorizontal: SPACING.base },
+  templateSection: { marginTop: 12, marginBottom: SPACING.sm, paddingHorizontal: SPACING.base },
   templateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
   templateTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   templateTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary },

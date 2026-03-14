@@ -9,26 +9,32 @@ interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Product, quantity: number, weight?: number, cutType?: CutType, instructions?: string, packId?: string, packName?: string) => void;
   removeFromCart: (productId: string) => void;
+  removePackItem: (packId: string, productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   updateCutType: (productId: string, cutType?: CutType) => void;
   updateInstructions: (productId: string, instructions: string) => void;
+  removePackFromCart: (packId: string) => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getCuttingTotal: () => number;
   getItemCount: () => number;
+  getDisplayCount: () => number;
 }
 
 const CartContext = createContext<CartContextType>({
   cartItems: [],
   addToCart: () => {},
   removeFromCart: () => {},
+  removePackItem: () => {},
   updateQuantity: () => {},
   updateCutType: () => {},
   updateInstructions: () => {},
+  removePackFromCart: () => {},
   clearCart: () => {},
   getSubtotal: () => 0,
   getCuttingTotal: () => 0,
   getItemCount: () => 0,
+  getDisplayCount: () => 0,
 });
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -82,6 +88,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCartItems(prev => prev.map(i => i.id === productId ? { ...i, specialInstructions: instructions } : i));
   }, []);
 
+  const removePackItem = useCallback((packId: string, productId: string) => {
+    setCartItems(prev => prev.filter(i => !(i.packId === packId && i.id === productId)));
+  }, []);
+
+  const removePackFromCart = useCallback((packId: string) => {
+    setCartItems(prev => prev.filter(i => i.packId !== packId));
+  }, []);
+
   const clearCart = useCallback(() => setCartItems([]), []);
 
   const calcItemPrice = useCallback((item: CartItem) => {
@@ -104,11 +118,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
 
+  const getDisplayCount = useCallback(() => {
+    const packIds = new Set(cartItems.filter(i => i.packId).map(i => i.packId as string));
+    const individualCount = cartItems.filter(i => !i.packId).reduce((sum, i) => sum + i.quantity, 0);
+    return packIds.size + individualCount;
+  }, [cartItems]);
+
   const value = useMemo(() => ({
-    cartItems, addToCart, removeFromCart, updateQuantity,
+    cartItems, addToCart, removeFromCart, removePackItem, removePackFromCart, updateQuantity,
     updateCutType, updateInstructions, clearCart,
-    getSubtotal, getCuttingTotal, getItemCount,
-  }), [cartItems, addToCart, removeFromCart, updateQuantity, updateCutType, updateInstructions, clearCart, getSubtotal, getCuttingTotal, getItemCount]);
+    getSubtotal, getCuttingTotal, getItemCount, getDisplayCount,
+  }), [cartItems, addToCart, removeFromCart, removePackItem, removePackFromCart, updateQuantity, updateCutType, updateInstructions, clearCart, getSubtotal, getCuttingTotal, getItemCount, getDisplayCount]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

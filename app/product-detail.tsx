@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, TextInput, Modal, Share, Alert } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, TextInput, Modal, Share, Alert, Animated as RNAnimated } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -76,9 +76,17 @@ export default function ProductDetailScreen() {
     return DISH_PACKS.filter(pack => pack.items.some(i => i.productId === id));
   }, [id]);
 
+  const [showAddedToast, setShowAddedToast] = useState(false);
+  const toastOpacity = useRef(new RNAnimated.Value(0)).current;
+
   const handleAddToCart = () => {
     addToCart(product as Product, quantity, selectedWeight, selectedCut, instructions || undefined);
-    router.back();
+    setShowAddedToast(true);
+    RNAnimated.sequence([
+      RNAnimated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      RNAnimated.delay(1500),
+      RNAnimated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setShowAddedToast(false));
   };
 
   const handleShare = async () => {
@@ -433,6 +441,15 @@ export default function ProductDetailScreen() {
           )}
         </SafeAreaView>
       </Modal>
+      {showAddedToast && (
+        <RNAnimated.View style={[styles.addedToast, { opacity: toastOpacity }]}>
+          <Icon name="check-circle" size={20} color="#FFF" />
+          <Text style={styles.addedToastText}>Added to cart!</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/cart')} style={styles.addedToastBtn}>
+            <Text style={styles.addedToastBtnText}>View Cart</Text>
+          </TouchableOpacity>
+        </RNAnimated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -553,4 +570,8 @@ const styles = StyleSheet.create({
   similarImage: { width: 110, height: 75 },
   similarName: { fontSize: 11, fontWeight: '600', color: COLORS.text.primary, paddingHorizontal: 6, paddingTop: 4 },
   similarPrice: { fontSize: 12, fontWeight: '800', color: COLORS.primary, paddingHorizontal: 6, paddingBottom: 6 },
+  addedToast: { position: 'absolute', bottom: 90, left: SPACING.base, right: SPACING.base, backgroundColor: '#388E3C', borderRadius: RADIUS.lg, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  addedToastText: { fontSize: 14, fontWeight: '700', color: '#FFF', flex: 1 },
+  addedToastBtn: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 6 },
+  addedToastBtnText: { fontSize: 12, fontWeight: '700', color: '#FFF' },
 });

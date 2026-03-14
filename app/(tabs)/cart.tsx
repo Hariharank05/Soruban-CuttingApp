@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useCart } from '@/context/CartContext';
-import { useScrollContext } from '@/context/ScrollContext';
+
 import { getCutLabel, getCutFee } from '@/data/cutTypes';
 import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useCoupons } from '@/context/CouponContext';
@@ -16,8 +16,7 @@ import productsData from '@/data/products.json';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, getSubtotal, getCuttingTotal, getItemCount } = useCart();
-  const { handleScroll } = useScrollContext();
+  const { cartItems, updateQuantity, removeFromCart, removePackFromCart, getSubtotal, getCuttingTotal, getItemCount } = useCart();
   const themed = useThemedStyles();
   const { appliedCoupon, applyCoupon, removeCoupon, calculateDiscount } = useCoupons();
   const { saveCart } = useSavedCarts();
@@ -147,7 +146,7 @@ export default function CartScreen() {
       <LinearGradient colors={themed.headerGradient} style={styles.header}><Text style={[styles.headerTitle, themed.textPrimary]}>{'\uD83D\uDED2'} Your Cart ({getItemCount()} items)</Text></LinearGradient>
       <ScrollView
         showsVerticalScrollIndicator
-        onScroll={handleScroll} scrollEventThrottle={16}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.list}
       >
         {/* Cart Items - scrollable container when >3 items */}
@@ -169,14 +168,25 @@ export default function CartScreen() {
               const packTotal = group.items.reduce((sum, item) => sum + calcItemPrice(item), 0);
               return (
                 <View key={group.packId} style={[styles.packGroupCard, themed.card]}>
-                  <TouchableOpacity style={styles.packGroupHeader} activeOpacity={0.8} onPress={() => togglePackExpand(group.packId)}>
-                    {group.packImage && <Image source={{ uri: group.packImage }} style={styles.packGroupImg} resizeMode="cover" />}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.packGroupName, themed.textPrimary]}>{group.packName}</Text>
-                      <Text style={styles.packGroupMeta}>{group.items.length} items · {'\u20B9'}{packTotal}</Text>
-                    </View>
-                    <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.text.muted} />
-                  </TouchableOpacity>
+                  <View style={styles.packGroupRow}>
+                    <TouchableOpacity style={styles.packGroupHeader} activeOpacity={0.8} onPress={() => togglePackExpand(group.packId)}>
+                      {group.packImage && <Image source={{ uri: group.packImage }} style={styles.packGroupImg} resizeMode="cover" />}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.packGroupName, themed.textPrimary]}>{group.packName}</Text>
+                        <Text style={styles.packGroupMeta}>{group.items.length} items · {'\u20B9'}{packTotal}</Text>
+                      </View>
+                      <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.text.muted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.packDeleteBtn}
+                      onPress={() => Alert.alert('Remove Pack', `Remove "${group.packName}" and all its items from cart?`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Remove', style: 'destructive', onPress: () => removePackFromCart(group.packId) },
+                      ])}
+                    >
+                      <Icon name="delete-outline" size={20} color={COLORS.status.error} />
+                    </TouchableOpacity>
+                  </View>
                   {isExpanded && (
                     <View style={styles.packGroupItems}>
                       {group.items.map((item, idx) => (
@@ -289,7 +299,9 @@ const styles = StyleSheet.create({
   cartItemsScrollWrap: { borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', marginBottom: SPACING.sm },
   cartItemsScroll: { maxHeight: 420 },
   packGroupCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, marginBottom: SPACING.sm, overflow: 'hidden', ...SHADOW.sm },
-  packGroupHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: SPACING.md },
+  packGroupRow: { flexDirection: 'row', alignItems: 'center' },
+  packGroupHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: SPACING.md, flex: 1 },
+  packDeleteBtn: { padding: SPACING.sm, marginRight: 4 },
   packGroupImg: { width: 44, height: 44, borderRadius: RADIUS.md },
   packGroupName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
   packGroupMeta: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },

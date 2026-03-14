@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
 
   /* Lifestyle Tabs */
   lifestyleTabsRow: {
-    flexDirection: 'row', paddingHorizontal: SPACING.base, gap: 8, marginBottom: SPACING.xs,
+    flexDirection: 'row', paddingHorizontal: SPACING.base, gap: 8, marginTop: 6, marginBottom: SPACING.md,
   },
   lifestyleTab: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   sectionBannerDesc: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
 
   /* Horizontal List */
-  horizontalList: { paddingHorizontal: SPACING.base, gap: 10, paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
+  horizontalList: { paddingHorizontal: SPACING.base, gap: 12, paddingTop: SPACING.sm, paddingBottom: SPACING.md },
 
   /* Mini Card */
   miniCard: { width: 140, backgroundColor: '#FFF', borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },

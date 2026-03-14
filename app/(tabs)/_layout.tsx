@@ -59,11 +59,11 @@ function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 }
 
 function FloatingCartBar() {
-  const { cartItems, getItemCount } = useCart();
+  const { cartItems, getDisplayCount } = useCart();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const count = getItemCount();
+  const count = getDisplayCount();
 
   if (count === 0 || pathname === '/cart') return null;
 
@@ -103,8 +103,8 @@ function FloatingCartBar() {
 
 
 export default function TabsLayout() {
-  const { getItemCount } = useCart();
-  const count = getItemCount();
+  const { getDisplayCount } = useCart();
+  const count = getDisplayCount();
 
   return (
     <ScrollProvider>

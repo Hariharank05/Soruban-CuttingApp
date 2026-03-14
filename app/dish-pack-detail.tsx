@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, TextInput, Modal, Share } from 'react-native';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, TextInput, Modal, Share, Animated as RNAnimated } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -77,6 +77,9 @@ export default function DishPackDetailScreen() {
   const totalPrice = useMemo(() => allItems.reduce((sum, item) => sum + calcItemPrice(item.productId, item.baseQty), 0), [allItems, itemWeights, itemQtys, cutSelections, selectedSize]);
   const cuttingTotal = useMemo(() => allItems.reduce((sum, item) => sum + getCutFee(cutSelections[item.productId]) * getItemQty(item.productId, item.baseQty), 0), [allItems, cutSelections, itemQtys]);
 
+  const [showAddedToast, setShowAddedToast] = useState(false);
+  const toastOpacity = useRef(new RNAnimated.Value(0)).current;
+
   const handleAddPackToCart = () => {
     allItems.forEach(item => {
       const product = productsData.find(p => p.id === item.productId);
@@ -87,7 +90,12 @@ export default function DishPackDetailScreen() {
       const fullInstructions = [variantNote, instructions].filter(Boolean).join('. ') || undefined;
       addToCart(product as Product, qty, weight, cutSelections[item.productId], fullInstructions, pack?.id, pack?.name);
     });
-    router.back();
+    setShowAddedToast(true);
+    RNAnimated.sequence([
+      RNAnimated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      RNAnimated.delay(1500),
+      RNAnimated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setShowAddedToast(false));
   };
 
   const handleShare = async () => {
@@ -203,72 +211,61 @@ export default function DishPackDetailScreen() {
 
         {/* Pack Items */}
         <View style={styles.section}>
-          <View style={styles.itemsHeaderRow}>
-            <Text style={[styles.sectionTitle, themed.textPrimary, { marginBottom: 0 }]}>Pack Items ({allItems.length})</Text>
-            {allItems.length > 3 && <Text style={styles.scrollHint}>Scroll to see all</Text>}
-          </View>
-          <View style={allItems.length > 3 ? styles.itemsScrollWrap : undefined}>
-            <ScrollView
-              nestedScrollEnabled
-              showsVerticalScrollIndicator={allItems.length > 3}
-              style={allItems.length > 3 ? styles.itemsScroll : undefined}
-              contentContainerStyle={styles.itemsContent}
-            >
-              {allItems.map(item => {
-                const product = productsData.find(p => p.id === item.productId);
-                if (!product) return null;
-                const isKg = product.unit.includes('kg');
-                const weight = getItemWeight(item.productId);
-                const qty = getItemQty(item.productId, item.baseQty);
-                const cut = cutSelections[item.productId];
-                const price = calcItemPrice(item.productId, item.baseQty);
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>Pack Items ({allItems.length})</Text>
+          {allItems.map(item => {
+            const product = productsData.find(p => p.id === item.productId);
+            if (!product) return null;
+            const isKg = product.unit.includes('kg');
+            const weight = getItemWeight(item.productId);
+            const qty = getItemQty(item.productId, item.baseQty);
+            const cut = cutSelections[item.productId];
+            const price = calcItemPrice(item.productId, item.baseQty);
 
-                return (
-                  <View key={item.productId} style={[styles.itemCard, themed.card]}>
-                    <View style={styles.itemHeader}>
-                      <View style={styles.itemImageWrap}><Image source={{ uri: product.image }} style={styles.itemImage} resizeMode="cover" /></View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.itemName}>{product.name}</Text>
-                        <Text style={styles.itemUnit}>{isKg ? (weight >= 1000 ? `${weight/1000} kg` : `${weight}g`) : product.unit}</Text>
-                      </View>
-                      <View style={styles.itemRight}>
-                        <Text style={styles.itemPrice}>{'\u20B9'}{price}</Text>
-                        {item.isExtra && <TouchableOpacity onPress={() => setExtraItems(prev => prev.filter(x => x !== item.productId))}><Icon name="close-circle" size={18} color={COLORS.status.error} /></TouchableOpacity>}
-                      </View>
-                    </View>
-                    {isKg && (
-                      <View style={styles.itemWeightRow}>
-                        {WEIGHT_OPTIONS.map(w => {
-                          const isW = weight === w.grams;
-                          return (
-                            <TouchableOpacity key={w.grams} style={[styles.miniChip, isW && styles.miniChipActive]} onPress={() => setItemWeights(prev => ({ ...prev, [item.productId]: w.grams }))}>
-                              <Text style={[styles.miniChipText, isW && styles.miniChipTextActive]}>{w.label}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cutChipsRow}>
-                      {CUT_TYPE_OPTIONS.map(opt => {
-                        const isActive = cut === opt.id;
-                        return (
-                          <TouchableOpacity key={opt.id} style={[styles.cutChip, isActive && styles.cutChipActive]}
-                            onPress={() => setCutSelections(prev => { if (prev[item.productId] === opt.id) { const n = { ...prev }; delete n[item.productId]; return n; } return { ...prev, [item.productId]: opt.id }; })}>
-                            <Text style={[styles.cutChipText, isActive && styles.cutChipTextActive]}>{opt.label}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                    <View style={styles.itemQtyRow}>
-                      <TouchableOpacity style={styles.qtyBtn} onPress={() => setItemQtys(prev => ({ ...prev, [item.productId]: Math.max(1, qty - 1) }))}><Icon name="minus" size={14} color={COLORS.primary} /></TouchableOpacity>
-                      <Text style={styles.qtyText}>{qty}</Text>
-                      <TouchableOpacity style={styles.qtyBtn} onPress={() => setItemQtys(prev => ({ ...prev, [item.productId]: qty + 1 }))}><Icon name="plus" size={14} color={COLORS.primary} /></TouchableOpacity>
-                    </View>
+            return (
+              <View key={item.productId} style={[styles.itemCard, themed.card]}>
+                <View style={styles.itemHeader}>
+                  <View style={styles.itemImageWrap}><Image source={{ uri: product.image }} style={styles.itemImage} resizeMode="cover" /></View>
+                  <View style={styles.itemInfo}>
+                    <Text style={[styles.itemName, themed.textPrimary]}>{product.name}</Text>
+                    <Text style={styles.itemUnit}>{isKg ? (weight >= 1000 ? `${weight/1000} kg` : `${weight}g`) : product.unit}</Text>
                   </View>
-                );
-              })}
-            </ScrollView>
-          </View>
+                  <View style={styles.itemRight}>
+                    <Text style={styles.itemPrice}>{'\u20B9'}{price}</Text>
+                    {item.isExtra && <TouchableOpacity onPress={() => setExtraItems(prev => prev.filter(x => x !== item.productId))} style={styles.removeExtraBtn}><Icon name="close-circle" size={18} color={COLORS.status.error} /></TouchableOpacity>}
+                  </View>
+                </View>
+                {isKg && (
+                  <View style={styles.itemWeightRow}>
+                    {WEIGHT_OPTIONS.map(w => {
+                      const isW = weight === w.grams;
+                      return (
+                        <TouchableOpacity key={w.grams} style={[styles.miniChip, isW && styles.miniChipActive]} onPress={() => setItemWeights(prev => ({ ...prev, [item.productId]: w.grams }))}>
+                          <Text style={[styles.miniChipText, isW && styles.miniChipTextActive]}>{w.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                <View style={styles.cutChipsRow}>
+                  {CUT_TYPE_OPTIONS.map(opt => {
+                    const isActive = cut === opt.id;
+                    return (
+                      <TouchableOpacity key={opt.id} style={[styles.cutChip, isActive && styles.cutChipActive]}
+                        onPress={() => setCutSelections(prev => { if (prev[item.productId] === opt.id) { const n = { ...prev }; delete n[item.productId]; return n; } return { ...prev, [item.productId]: opt.id }; })}>
+                        <Text style={[styles.cutChipText, isActive && styles.cutChipTextActive]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <View style={styles.itemQtyRow}>
+                  <Text style={styles.qtyLabel}>Qty</Text>
+                  <TouchableOpacity style={styles.qtyBtn} onPress={() => setItemQtys(prev => ({ ...prev, [item.productId]: Math.max(1, qty - 1) }))}><Icon name="minus" size={14} color={COLORS.primary} /></TouchableOpacity>
+                  <Text style={styles.qtyText}>{qty}</Text>
+                  <TouchableOpacity style={styles.qtyBtn} onPress={() => setItemQtys(prev => ({ ...prev, [item.productId]: qty + 1 }))}><Icon name="plus" size={14} color={COLORS.primary} /></TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
         </View>
 
         {/* Extras */}
@@ -339,6 +336,15 @@ export default function DishPackDetailScreen() {
           )}
         </SafeAreaView>
       </Modal>
+      {showAddedToast && (
+        <RNAnimated.View style={[styles.addedToast, { opacity: toastOpacity }]}>
+          <Icon name="check-circle" size={20} color="#FFF" />
+          <Text style={styles.addedToastText}>Pack added to cart!</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/cart')} style={styles.addedToastBtn}>
+            <Text style={styles.addedToastBtnText}>View Cart</Text>
+          </TouchableOpacity>
+        </RNAnimated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -349,19 +355,19 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: SPACING.sm },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text.primary },
-  scroll: { paddingBottom: 20 },
+  scroll: { paddingBottom: 30 },
   infoCard: { marginHorizontal: SPACING.base, marginTop: SPACING.sm, borderRadius: RADIUS.xl, overflow: 'hidden', alignItems: 'center', ...SHADOW.sm },
-  infoImage: { width: '100%', height: 160 },
+  infoImage: { width: '100%', height: 180 },
   infoName: { fontSize: 20, fontWeight: '800', color: COLORS.text.primary, marginTop: SPACING.md },
-  infoDesc: { fontSize: 13, color: COLORS.text.secondary, textAlign: 'center', marginTop: 4, lineHeight: 18, paddingHorizontal: SPACING.base },
-  infoTag: { backgroundColor: COLORS.green, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 3, marginTop: 8, marginBottom: SPACING.md },
+  infoDesc: { fontSize: 13, color: COLORS.text.secondary, textAlign: 'center', marginTop: 6, lineHeight: 19, paddingHorizontal: SPACING.md, marginBottom: 4 },
+  infoTag: { backgroundColor: COLORS.green, borderRadius: RADIUS.sm, paddingHorizontal: 12, paddingVertical: 4, marginTop: 8, marginBottom: SPACING.md },
   infoTagText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
-  section: { marginTop: SPACING.xl, paddingHorizontal: SPACING.base },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary, marginBottom: SPACING.md },
+  section: { marginTop: 20, paddingHorizontal: SPACING.base },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary, marginBottom: 12 },
   // Regional Variants
-  variantCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, borderWidth: 1.5, borderColor: COLORS.border, position: 'relative' },
+  variantCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: COLORS.border, position: 'relative' },
   variantCardActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
-  variantHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  variantHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   variantName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
   spiceBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.full },
   spiceText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
@@ -381,62 +387,60 @@ const styles = StyleSheet.create({
   stepNumberText: { fontSize: 12, fontWeight: '700', color: '#FFF' },
   stepText: { flex: 1, fontSize: 13, color: COLORS.text.secondary, lineHeight: 18 },
   // Size
-  sizeRow: { flexDirection: 'row', gap: 6 },
-  sizeChip: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF' },
+  sizeRow: { flexDirection: 'row', gap: 8 },
+  sizeChip: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF' },
   sizeChipActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
   sizeLabel: { fontSize: 12, fontWeight: '700', color: COLORS.text.secondary },
   sizeLabelActive: { color: COLORS.primary },
-  sizeWeight: { fontSize: 14, fontWeight: '800', color: COLORS.text.primary, marginTop: 2 },
+  sizeWeight: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary, marginTop: 3 },
   sizeWeightActive: { color: COLORS.primary },
-  sizeServes: { fontSize: 9, color: COLORS.text.muted, marginTop: 2, textAlign: 'center' },
+  sizeServes: { fontSize: 10, color: COLORS.text.muted, marginTop: 3, textAlign: 'center' },
   sizeServesActive: { color: COLORS.primary },
   // Items
-  itemsHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
-  scrollHint: { fontSize: 11, color: COLORS.text.muted, fontStyle: 'italic' },
-  itemsScrollWrap: { borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
-  itemsScroll: { maxHeight: 480 },
-  itemsContent: { padding: SPACING.xs },
-  itemCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, ...SHADOW.sm },
-  itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  itemImageWrap: { width: 44, height: 44, borderRadius: RADIUS.md, overflow: 'hidden' },
+  itemCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  itemImageWrap: { width: 48, height: 48, borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: '#F5F5F5' },
   itemImage: { width: '100%', height: '100%' },
+  itemInfo: { flex: 1 },
   itemName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary },
-  itemUnit: { fontSize: 11, color: COLORS.text.muted, marginTop: 1 },
-  itemRight: { alignItems: 'flex-end', gap: 4 },
-  itemPrice: { fontSize: 14, fontWeight: '800', color: COLORS.text.primary },
-  itemWeightRow: { flexDirection: 'row', gap: 4, marginTop: 8 },
-  miniChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#F7F7F7' },
+  itemUnit: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  itemRight: { alignItems: 'flex-end', gap: 6 },
+  itemPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary },
+  removeExtraBtn: { padding: 2 },
+  itemWeightRow: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  miniChip: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#F9F9F9' },
   miniChipActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
-  miniChipText: { fontSize: 10, fontWeight: '600', color: COLORS.text.muted },
+  miniChipText: { fontSize: 11, fontWeight: '600', color: COLORS.text.muted },
   miniChipTextActive: { color: COLORS.primary, fontWeight: '700' },
-  cutChipsRow: { flexDirection: 'row', gap: 4, marginTop: 8 },
-  cutChip: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#F7F7F7' },
+  cutChipsRow: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  cutChip: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#F9F9F9' },
   cutChipActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
-  cutChipText: { fontSize: 10, fontWeight: '600', color: COLORS.text.muted },
+  cutChipText: { fontSize: 11, fontWeight: '600', color: COLORS.text.muted },
   cutChipTextActive: { color: COLORS.primary, fontWeight: '700' },
-  itemQtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  qtyBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-  qtyText: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary, minWidth: 18, textAlign: 'center' },
+  itemQtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  qtyLabel: { fontSize: 12, fontWeight: '600', color: COLORS.text.secondary, marginRight: 2 },
+  qtyBtn: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  qtyText: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary, minWidth: 20, textAlign: 'center' },
   // Extras
-  extrasRow: { paddingLeft: SPACING.xs, paddingRight: SPACING.base, paddingVertical: SPACING.sm, gap: 8 },
-  extraCard: { width: 90, backgroundColor: '#FFF', borderRadius: RADIUS.md, overflow: 'hidden', ...SHADOW.sm },
-  extraImgWrap: { width: 90, height: 60, overflow: 'hidden' },
+  extrasRow: { paddingLeft: 2, paddingRight: SPACING.base, paddingVertical: SPACING.sm, gap: 10 },
+  extraCard: { width: 100, backgroundColor: '#FFF', borderRadius: RADIUS.lg, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+  extraImgWrap: { width: 100, height: 68, overflow: 'hidden', backgroundColor: '#F5F5F5' },
   extraImg: { width: '100%', height: '100%' },
-  extraName: { fontSize: 10, fontWeight: '600', color: COLORS.text.primary, paddingHorizontal: 4, paddingTop: 4 },
-  extraPrice: { fontSize: 11, fontWeight: '800', color: COLORS.primary, paddingHorizontal: 4, paddingBottom: 4 },
-  instructionsInput: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md, fontSize: 13, color: COLORS.text.primary, minHeight: 60, textAlignVertical: 'top' },
+  extraName: { fontSize: 11, fontWeight: '600', color: COLORS.text.primary, paddingHorizontal: 6, paddingTop: 6 },
+  extraPrice: { fontSize: 12, fontWeight: '800', color: COLORS.primary, paddingHorizontal: 6, paddingBottom: 6, marginTop: 2 },
+  instructionsInput: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: 14, fontSize: 13, color: COLORS.text.primary, minHeight: 64, textAlignVertical: 'top' },
   // Price
-  priceCard: { marginHorizontal: SPACING.base, marginTop: SPACING.xl, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, ...SHADOW.sm },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  priceCard: { marginHorizontal: SPACING.base, marginTop: 20, backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, borderWidth: 1, borderColor: COLORS.border },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
   priceLabel: { fontSize: 13, color: COLORS.text.secondary },
   priceValue: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
-  priceTotalRow: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 6, paddingTop: 10 },
+  priceTotalRow: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 8, paddingTop: 12 },
   priceTotalLabel: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
-  priceTotalValue: { fontSize: 17, fontWeight: '800', color: COLORS.primary },
-  addBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: SPACING.base, paddingVertical: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border, ...SHADOW.floating },
+  priceTotalValue: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
+  addBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: SPACING.base, paddingVertical: 14, borderTopWidth: 1, borderTopColor: COLORS.border, ...SHADOW.floating },
   addBarPrice: { fontSize: 18, fontWeight: '800', color: COLORS.text.primary },
-  addBarSub: { fontSize: 10, color: COLORS.text.muted },
-  addBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.green, borderRadius: RADIUS.full, paddingHorizontal: 20, paddingVertical: 14 },
+  addBarSub: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  addBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.green, borderRadius: RADIUS.full, paddingHorizontal: 22, paddingVertical: 14 },
   addBarBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
   // Modal
   modalFull: { flex: 1, backgroundColor: '#000' },
@@ -444,4 +448,8 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary },
   videoPlayer: { width: '100%', height: 260 },
   webViewPlayer: { flex: 1 },
+  addedToast: { position: 'absolute', bottom: 90, left: SPACING.base, right: SPACING.base, backgroundColor: '#388E3C', borderRadius: RADIUS.lg, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  addedToastText: { fontSize: 14, fontWeight: '700', color: '#FFF', flex: 1 },
+  addedToastBtn: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 6 },
+  addedToastBtnText: { fontSize: 12, fontWeight: '700', color: '#FFF' },
 });
