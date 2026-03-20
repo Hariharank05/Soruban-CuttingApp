@@ -10,10 +10,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useDiet } from '@/context/DietContext';
+import type { UserGender, UserLifestyle } from '@/context/DietContext';
 import { DIETARY_PRESETS } from '@/data/recipes';
 
 // ─── Constants ───────────────────────────────────────────────
 const COMMON_ALLERGENS = ['Nuts', 'Dairy', 'Gluten', 'Soy', 'Shellfish', 'Eggs', 'Mushroom'];
+
+const GENDER_OPTIONS: { value: UserGender; label: string; icon: string }[] = [
+  { value: 'male', label: 'Male', icon: 'human-male' },
+  { value: 'female', label: 'Female', icon: 'human-female' },
+  { value: 'other', label: 'Other', icon: 'human-non-binary' },
+];
+
+const LIFESTYLE_OPTIONS: { value: UserLifestyle; label: string; icon: string; desc: string }[] = [
+  { value: 'gym', label: 'Gym & Fitness', icon: 'dumbbell', desc: 'Regular workouts & exercise' },
+  { value: 'student', label: 'Student / Hostel', icon: 'school', desc: 'College, hostel or PG life' },
+  { value: 'working', label: 'Working Professional', icon: 'briefcase', desc: 'Office or remote work' },
+  { value: 'homemaker', label: 'Homemaker', icon: 'home-heart', desc: 'Managing home & family' },
+];
 
 const HEALTH_GOALS: { id: string; label: string; icon: string }[] = [
   { id: 'lose_weight', label: 'Lose Weight', icon: 'scale-bathroom' },
@@ -31,8 +45,8 @@ export default function DietPreferencesScreen() {
   const router = useRouter();
   const themed = useThemedStyles();
   const {
-    selectedDiets, allergies, healthGoals, familyMembers,
-    setDietPreferences, setAllergies, setHealthGoals,
+    selectedDiets, allergies, healthGoals, gender, lifestyle, familyMembers,
+    setDietPreferences, setAllergies, setHealthGoals, setGender, setLifestyle,
     addFamilyMember, removeFamilyMember,
   } = useDiet();
 
@@ -40,6 +54,8 @@ export default function DietPreferencesScreen() {
   const [localDiets, setLocalDiets] = useState<string[]>(selectedDiets);
   const [localAllergies, setLocalAllergies] = useState<string[]>(allergies);
   const [localGoals, setLocalGoals] = useState<string[]>(healthGoals);
+  const [localGender, setLocalGender] = useState<UserGender>(gender);
+  const [localLifestyle, setLocalLifestyle] = useState<UserLifestyle>(lifestyle);
 
   // Family member inline form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -58,8 +74,10 @@ export default function DietPreferencesScreen() {
         setDietPreferences(localDiets),
         setAllergies(localAllergies),
         setHealthGoals(localGoals),
+        setGender(localGender),
+        setLifestyle(localLifestyle),
       ]);
-      Alert.alert('Saved', 'Your diet & health preferences have been updated.');
+      Alert.alert('Saved', 'Your preferences have been updated. Subscription plans will now be personalized for you!');
     } catch {
       Alert.alert('Error', 'Failed to save preferences. Please try again.');
     }
@@ -120,6 +138,50 @@ export default function DietPreferencesScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── 0a. Gender ── */}
+        <SectionTitle icon="account" title="I am" />
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: SPACING.md }}>
+          {GENDER_OPTIONS.map(opt => {
+            const selected = localGender === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                activeOpacity={0.7}
+                onPress={() => setLocalGender(opt.value)}
+                style={[styles.genderCard, themed.card, selected && { borderColor: COLORS.primary, borderWidth: 2, backgroundColor: '#E8F5E9' }]}
+              >
+                <Icon name={opt.icon as any} size={26} color={selected ? COLORS.primary : COLORS.text.muted} />
+                <Text style={[{ fontSize: 13, fontWeight: '700', marginTop: 4 }, selected ? { color: COLORS.primary } : themed.textPrimary]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ── 0b. Lifestyle ── */}
+        <SectionTitle icon="run" title="My Lifestyle" />
+        <View style={{ gap: 8, marginBottom: SPACING.md }}>
+          {LIFESTYLE_OPTIONS.map(opt => {
+            const selected = localLifestyle === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                activeOpacity={0.7}
+                onPress={() => setLocalLifestyle(opt.value)}
+                style={[styles.lifestyleCard, themed.card, selected && { borderColor: COLORS.primary, borderWidth: 2, backgroundColor: '#E8F5E9' }]}
+              >
+                <View style={[styles.lifestyleIcon, selected && { backgroundColor: COLORS.primary }]}>
+                  <Icon name={opt.icon as any} size={20} color={selected ? '#FFF' : COLORS.text.muted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ fontSize: 13, fontWeight: '700' }, selected ? { color: COLORS.primary } : themed.textPrimary]}>{opt.label}</Text>
+                  <Text style={{ fontSize: 10, color: COLORS.text.muted }}>{opt.desc}</Text>
+                </View>
+                {selected && <Icon name="check-circle" size={20} color={COLORS.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* ── 1. Dietary Preferences ── */}
         <SectionTitle icon="silverware-fork-knife" title="Dietary Preferences" />
         <View style={styles.cardGrid}>
@@ -341,6 +403,23 @@ export default function DietPreferencesScreen() {
 // ─── Styles ──────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+
+  // Gender & Lifestyle
+  genderCard: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 16, borderRadius: RADIUS.lg,
+    borderWidth: 1, borderColor: '#E0E0E0',
+  },
+  lifestyleCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12, borderRadius: RADIUS.lg,
+    borderWidth: 1, borderColor: '#E0E0E0',
+  },
+  lifestyleIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+  },
 
   // Header
   header: {

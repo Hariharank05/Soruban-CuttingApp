@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, StatusBar, Animated, Alert, ScrollView } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, StatusBar, Alert } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -20,28 +20,8 @@ export default function PacksScreen() {
   const { handleScroll } = useScrollContext();
   const [filter, setFilter] = useState<FilterType>('all');
   const themed = useThemedStyles();
-  const scrollY = useRef(new Animated.Value(0)).current;
   const { customPacks, deleteCustomPack, updateCustomPackLastOrdered } = useSavedCarts();
   const { addToCart } = useCart();
-
-  const heroBannerHeight = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const heroBannerOpacity = scrollY.interpolate({
-    inputRange: [0, 60],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const onScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    {
-      useNativeDriver: false,
-      listener: (event: any) => handleScroll(event),
-    },
-  );
 
   const packs = useMemo(() => {
     if (filter === 'all') return DISH_PACKS;
@@ -105,32 +85,7 @@ export default function PacksScreen() {
         <Text style={styles.headerSub}>Pre-cut veggie packs for your favorite dishes</Text>
       </LinearGradient>
 
-      {/* <Animated.View style={[styles.heroBanner, { transform: [{ scaleY: heroBannerHeight }], opacity: heroBannerOpacity, maxHeight: heroBannerHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 200] }) }]}>
-        <LinearGradient colors={COLORS.gradient.green} style={styles.heroGrad}>
-          <Text style={styles.heroTitle}>Cook Smarter, Order Faster!</Text>
-          <Text style={styles.heroDesc}>Pick a dish, choose pack size, select cut style for each vegetable. We cut & deliver!</Text>
-        </LinearGradient>
-      </Animated.View> */}
-
-      <Animated.View style={[styles.heroBanner, { transform: [{ scaleY: heroBannerHeight }], opacity: heroBannerOpacity, maxHeight: heroBannerHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 200] }) }]}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => router.push('/create-pack' as any)}
-        >
-          <LinearGradient colors={['#43A047', '#66BB6A']} style={styles.createPackGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <View style={styles.createPackContent}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.createPackTitle}>Create Your Pack</Text>
-                <Text style={styles.createPackDesc}>Build a custom veggie pack with your own selection of items & cut styles</Text>
-              </View>
-              <View style={styles.createPackIconWrap}>
-                <Icon name="plus-circle-outline" size={36} color="#FFF" />
-              </View>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-
+      {/* Filter Chips — fixed */}
       <View style={styles.filterRow}>
         {([
           { key: 'all' as FilterType, label: 'All Packs' },
@@ -143,77 +98,102 @@ export default function PacksScreen() {
         ))}
       </View>
 
-      {customPacks.length > 0 && (
-        <Animated.View style={[styles.templateSection, { transform: [{ scaleY: heroBannerHeight }], opacity: heroBannerOpacity, maxHeight: heroBannerHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 500] }) }]}>
-          <View style={styles.templateHeader}>
-            <View style={styles.templateTitleRow}>
-              <Icon name="package-variant" size={18} color={COLORS.green} />
-              <Text style={[styles.templateTitle, themed.textPrimary]}>My Templates</Text>
-            </View>
-            <View style={styles.templateBadge}>
-              <Text style={styles.templateBadgeText}>{customPacks.length}</Text>
-            </View>
-          </View>
-          <ScrollView
-            style={customPacks.length > 3 ? styles.templateScrollArea : undefined}
-            showsVerticalScrollIndicator={customPacks.length > 3}
-            nestedScrollEnabled
-          >
-            {customPacks.map(item => {
-              const itemNames = item.items.slice(0, 3).map(pi => {
-                const prod = productsData.find(p => p.id === pi.productId);
-                return prod?.name ?? 'Item';
-              });
-              return (
-                <View key={item.id} style={[styles.templateCard, themed.card]}>
-                  <View style={styles.templateCardRow}>
-                    <View style={styles.templateIconWrap}>
-                      <Icon name="food-variant" size={20} color={COLORS.green} />
-                    </View>
-                    <View style={styles.templateInfo}>
-                      <Text style={[styles.templateName, themed.textPrimary]} numberOfLines={1}>{item.name}</Text>
-                      <Text style={styles.templateItems} numberOfLines={1}>
-                        {itemNames.join(', ')}{item.items.length > 3 ? ` +${item.items.length - 3} more` : ''}
-                      </Text>
-                    </View>
-                    <View style={styles.templateCardActions}>
-                      <TouchableOpacity
-                        style={styles.templateReorderBtn}
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          item.items.forEach(pi => {
-                            const prod = productsData.find(p => p.id === pi.productId);
-                            if (prod) addToCart(prod as any, pi.quantity, undefined, pi.cutType);
-                          });
-                          updateCustomPackLastOrdered(item.id);
-                          Alert.alert('Added to Cart', `${item.name} items added to your cart`);
-                        }}
-                      >
-                        <Icon name="cart-plus" size={14} color="#FFF" />
-                        <Text style={styles.templateReorderText}>Add</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.templateDeleteBtn}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          Alert.alert('Delete Template', `Remove "${item.name}"?`, [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Delete', style: 'destructive', onPress: () => deleteCustomPack(item.id) },
-                          ]);
-                        }}
-                      >
-                        <Icon name="delete-outline" size={16} color="#E53935" />
-                      </TouchableOpacity>
-                    </View>
+      <FlatList
+        data={packs}
+        keyExtractor={i => i.id}
+        renderItem={renderPack}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        ListHeaderComponent={
+          <View>
+            {/* Create Pack Banner */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push('/create-pack' as any)}
+              style={styles.heroBanner}
+            >
+              <LinearGradient colors={['#43A047', '#66BB6A']} style={styles.createPackGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <View style={styles.createPackContent}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.createPackTitle}>Create Your Pack</Text>
+                    <Text style={styles.createPackDesc}>Build a custom veggie pack with your own selection of items & cut styles</Text>
+                  </View>
+                  <View style={styles.createPackIconWrap}>
+                    <Icon name="plus-circle-outline" size={36} color="#FFF" />
                   </View>
                 </View>
-              );
-            })}
-          </ScrollView>
-        </Animated.View>
-      )}
+              </LinearGradient>
+            </TouchableOpacity>
 
-      <FlatList data={packs} keyExtractor={i => i.id} renderItem={renderPack} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} />
+            {/* My Templates */}
+            {customPacks.length > 0 && (
+              <View style={styles.templateSection}>
+                <View style={styles.templateHeader}>
+                  <View style={styles.templateTitleRow}>
+                    <Icon name="package-variant" size={18} color={COLORS.green} />
+                    <Text style={[styles.templateTitle, themed.textPrimary]}>My Templates</Text>
+                  </View>
+                  <View style={styles.templateBadge}>
+                    <Text style={styles.templateBadgeText}>{customPacks.length}</Text>
+                  </View>
+                </View>
+                {customPacks.map(item => {
+                  const itemNames = item.items.slice(0, 3).map(pi => {
+                    const prod = productsData.find(p => p.id === pi.productId);
+                    return prod?.name ?? 'Item';
+                  });
+                  return (
+                    <View key={item.id} style={[styles.templateCard, themed.card]}>
+                      <View style={styles.templateCardRow}>
+                        <View style={styles.templateIconWrap}>
+                          <Icon name="food-variant" size={20} color={COLORS.green} />
+                        </View>
+                        <View style={styles.templateInfo}>
+                          <Text style={[styles.templateName, themed.textPrimary]} numberOfLines={1}>{item.name}</Text>
+                          <Text style={styles.templateItems} numberOfLines={1}>
+                            {itemNames.join(', ')}{item.items.length > 3 ? ` +${item.items.length - 3} more` : ''}
+                          </Text>
+                        </View>
+                        <View style={styles.templateCardActions}>
+                          <TouchableOpacity
+                            style={styles.templateReorderBtn}
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              item.items.forEach(pi => {
+                                const prod = productsData.find(p => p.id === pi.productId);
+                                if (prod) addToCart(prod as any, pi.quantity, undefined, pi.cutType);
+                              });
+                              updateCustomPackLastOrdered(item.id);
+                              Alert.alert('Added to Cart', `${item.name} items added to your cart`);
+                            }}
+                          >
+                            <Icon name="cart-plus" size={14} color="#FFF" />
+                            <Text style={styles.templateReorderText}>Add</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.templateDeleteBtn}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              Alert.alert('Delete Template', `Remove "${item.name}"?`, [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Delete', style: 'destructive', onPress: () => deleteCustomPack(item.id) },
+                              ]);
+                            }}
+                          >
+                            <Icon name="delete-outline" size={16} color="#E53935" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -223,11 +203,11 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: SPACING.base, paddingVertical: SPACING.md },
   headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text.primary },
   headerSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
-  heroBanner: { marginHorizontal: SPACING.base, marginTop: SPACING.sm, marginBottom: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden' },
+  heroBanner: { marginBottom: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden' },
   heroGrad: { padding: SPACING.base },
   heroTitle: { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 4 },
   heroDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 17 },
-  filterRow: { flexDirection: 'row', paddingHorizontal: SPACING.base, marginTop: SPACING.md, marginBottom: SPACING.sm, gap: 8 },
+  filterRow: { flexDirection: 'row', paddingHorizontal: SPACING.base, marginTop: SPACING.sm, marginBottom: SPACING.sm, gap: 8 },
   filterChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF' },
   filterChipActive: { borderColor: COLORS.green, backgroundColor: '#EAF7EB' },
   filterChipText: { fontSize: 13, fontWeight: '700', color: COLORS.text.secondary },
@@ -238,13 +218,12 @@ const styles = StyleSheet.create({
   createPackTitle: { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 4 },
   createPackDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 17 },
   createPackIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  templateSection: { marginTop: 12, marginBottom: SPACING.sm, paddingHorizontal: SPACING.base },
+  templateSection: { marginTop: 12, marginBottom: SPACING.sm },
   templateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
   templateTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   templateTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text.primary },
   templateBadge: { backgroundColor: COLORS.green, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   templateBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
-  templateScrollArea: { maxHeight: 210 },
   templateCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: 10, marginBottom: 8, ...SHADOW.sm },
   templateCardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   templateIconWrap: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#EAF7EB', justifyContent: 'center', alignItems: 'center' },

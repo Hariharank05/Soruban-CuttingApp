@@ -23,7 +23,7 @@ function isYouTubeUrl(url: string): boolean {
 
 export default function DishPackDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const { addToCart } = useCart();
   const themed = useThemedStyles();
 
@@ -90,6 +90,10 @@ export default function DishPackDetailScreen() {
       const fullInstructions = [variantNote, instructions].filter(Boolean).join('. ') || undefined;
       addToCart(product as Product, qty, weight, cutSelections[item.productId], fullInstructions, pack?.id, pack?.name);
     });
+    if (from === 'subscription') {
+      router.back();
+      return;
+    }
     setShowAddedToast(true);
     RNAnimated.sequence([
       RNAnimated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),

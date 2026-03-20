@@ -6,15 +6,29 @@ const DIET_KEY = '@cutting_diet';
 const FAMILY_KEY = '@cutting_family';
 const VACATION_KEY = '@cutting_vacation';
 
+export type UserGender = 'male' | 'female' | 'other' | '';
+export type UserLifestyle = 'gym' | 'student' | 'working' | 'homemaker' | '';
+export type UserCategory = 'gym_male' | 'gym_female' | 'hostel_girl' | 'hostel_boy' | 'parent' | 'caretaker' | 'working_pro' | 'homemaker' | '';
+
 interface DietContextType {
   selectedDiets: string[];
   allergies: string[];
   healthGoals: string[];
+  gender: UserGender;
+  lifestyle: UserLifestyle;
+  userCategory: UserCategory;
+  userName: string;
+  userAge: string;
   familyMembers: FamilyMember[];
   vacationMode: VacationMode | null;
+  profileComplete: boolean;
   setDietPreferences: (diets: string[]) => Promise<void>;
   setAllergies: (allergies: string[]) => Promise<void>;
   setHealthGoals: (goals: string[]) => Promise<void>;
+  setGender: (gender: UserGender) => Promise<void>;
+  setLifestyle: (lifestyle: UserLifestyle) => Promise<void>;
+  setFullProfile: (data: { userName: string; userAge: string; gender: UserGender; userCategory: UserCategory; lifestyle: UserLifestyle; healthGoals: string[] }) => Promise<void>;
+  resetProfile: () => Promise<void>;
   addFamilyMember: (member: Omit<FamilyMember, 'id'>) => Promise<void>;
   removeFamilyMember: (id: string) => Promise<void>;
   updateFamilyMember: (id: string, updates: Partial<FamilyMember>) => Promise<void>;
@@ -25,14 +39,22 @@ interface DietState {
   selectedDiets: string[];
   allergies: string[];
   healthGoals: string[];
+  gender: UserGender;
+  lifestyle: UserLifestyle;
+  userCategory: UserCategory;
+  userName: string;
+  userAge: string;
 }
 
-const DEFAULT_DIET: DietState = { selectedDiets: [], allergies: [], healthGoals: [] };
+const DEFAULT_DIET: DietState = { selectedDiets: [], allergies: [], healthGoals: [], gender: '', lifestyle: '', userCategory: '', userName: '', userAge: '' };
 
 const DietContext = createContext<DietContextType>({
-  selectedDiets: [], allergies: [], healthGoals: [],
-  familyMembers: [], vacationMode: null,
+  selectedDiets: [], allergies: [], healthGoals: [], gender: '', lifestyle: '',
+  userCategory: '', userName: '', userAge: '',
+  familyMembers: [], vacationMode: null, profileComplete: false,
   setDietPreferences: async () => {}, setAllergies: async () => {}, setHealthGoals: async () => {},
+  setGender: async () => {}, setLifestyle: async () => {},
+  setFullProfile: async () => {}, resetProfile: async () => {},
   addFamilyMember: async () => {}, removeFamilyMember: async () => {}, updateFamilyMember: async () => {},
   setVacationMode: async () => {},
 });
@@ -72,6 +94,25 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     await persistDiet({ ...diet, healthGoals: goals });
   }, [diet, persistDiet]);
 
+  const setGender = useCallback(async (gender: UserGender) => {
+    await persistDiet({ ...diet, gender });
+  }, [diet, persistDiet]);
+
+  const setLifestyle = useCallback(async (lifestyle: UserLifestyle) => {
+    await persistDiet({ ...diet, lifestyle });
+  }, [diet, persistDiet]);
+
+  const setFullProfile = useCallback(async (data: { userName: string; userAge: string; gender: UserGender; userCategory: UserCategory; lifestyle: UserLifestyle; healthGoals: string[] }) => {
+    await persistDiet({ ...diet, ...data });
+  }, [diet, persistDiet]);
+
+  const resetProfile = useCallback(async () => {
+    setDiet(DEFAULT_DIET);
+    await AsyncStorage.removeItem(DIET_KEY);
+  }, []);
+
+  const profileComplete = !!(diet.userCategory && diet.userName);
+
   const addFamilyMember = useCallback(async (member: Omit<FamilyMember, 'id'>) => {
     const newMember: FamilyMember = { ...member, id: `fm_${Date.now()}` };
     const updated = [...familyMembers, newMember];
@@ -102,10 +143,14 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(() => ({
     selectedDiets: diet.selectedDiets, allergies: diet.allergies, healthGoals: diet.healthGoals,
+    gender: diet.gender, lifestyle: diet.lifestyle,
+    userCategory: diet.userCategory, userName: diet.userName, userAge: diet.userAge,
+    profileComplete,
     familyMembers, vacationMode,
     setDietPreferences, setAllergies: setAllergiesFunc, setHealthGoals,
+    setGender, setLifestyle, setFullProfile, resetProfile,
     addFamilyMember, removeFamilyMember, updateFamilyMember, setVacationMode,
-  }), [diet, familyMembers, vacationMode, setDietPreferences, setAllergiesFunc, setHealthGoals, addFamilyMember, removeFamilyMember, updateFamilyMember, setVacationMode]);
+  }), [diet, familyMembers, vacationMode, profileComplete, setDietPreferences, setAllergiesFunc, setHealthGoals, setGender, setLifestyle, setFullProfile, resetProfile, addFamilyMember, removeFamilyMember, updateFamilyMember, setVacationMode]);
 
   return <DietContext.Provider value={value}>{children}</DietContext.Provider>;
 }

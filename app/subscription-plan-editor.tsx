@@ -21,6 +21,27 @@ const WEEKDAY_LABELS: Record<WeekDay, string> = {
   Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
 };
 
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function getUpcomingWeekDates(): Record<WeekDay, Date> {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  // If all days this week are past, use next week
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const baseMonday = sunday < today ? new Date(monday.setDate(monday.getDate() + 7)) : monday;
+
+  const dates: Record<string, Date> = {};
+  WEEKDAYS.forEach((day, i) => {
+    const d = new Date(baseMonday);
+    d.setDate(baseMonday.getDate() + i);
+    dates[day] = d;
+  });
+  return dates as Record<WeekDay, Date>;
+}
+
 const CUT_OPTIONS: { value: CutType; label: string; icon: string }[] = [
   { value: 'small_pieces', label: 'Small Pieces', icon: 'knife' },
   { value: 'slices', label: 'Slices', icon: 'content-cut' },
@@ -41,15 +62,65 @@ export default function SubscriptionPlanEditorScreen() {
   const router = useRouter();
   const themed = useThemedStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { orders, updateWeeklyPlan } = useOrders();
+  const { orders, updateWeeklyPlan, skipDelivery, unskipDelivery, getUpcomingDeliveries } = useOrders();
 
   const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
   const sub = order?.subscription;
 
-  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() =>
-    sub?.weeklyPlan ?? createEmptyPlan()
-  );
-  const [selectedDay, setSelectedDay] = useState<WeekDay>('Mon');
+  const weekDates = useMemo(() => getUpcomingWeekDates(), []);
+
+  const upcomingDeliveries = useMemo(() => {
+    if (!order) return [];
+    return getUpcomingDeliveries(order.id, 14);
+  }, [order, getUpcomingDeliveries]);
+
+  const isDateSkipped = useCallback((day: WeekDay) => {
+    const date = weekDates[day];
+    const dateKey = date.toISOString().split('T')[0];
+    return upcomingDeliveries.some(d => d.date === dateKey && d.isSkipped);
+  }, [weekDates, upcomingDeliveries]);
+
+  const getDateKey = useCallback((day: WeekDay) => {
+    return weekDates[day].toISOString().split('T')[0];
+  }, [weekDates]);
+
+  const isToday = useCallback((day: WeekDay) => {
+    const today = new Date();
+    const d = weekDates[day];
+    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }, [weekDates]);
+
+  const isTomorrow = useCallback((day: WeekDay) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const d = weekDates[day];
+    return d.getDate() === tomorrow.getDate() && d.getMonth() === tomorrow.getMonth() && d.getFullYear() === tomorrow.getFullYear();
+  }, [weekDates]);
+
+  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(() => {
+    if (sub?.weeklyPlan) return sub.weeklyPlan;
+    // If no weekly plan exists, populate all active days from order items
+    const plan = createEmptyPlan();
+    if (order?.items && order.items.length > 0) {
+      const itemsFromOrder: DayPlanItem[] = order.items.map(oi => ({
+        productId: oi.id,
+        name: oi.name,
+        quantity: oi.quantity,
+        unit: oi.unit,
+        cutType: oi.cutType,
+        specialInstructions: oi.specialInstructions,
+      }));
+      for (const day of WEEKDAYS) {
+        plan[day] = { ...plan[day], items: itemsFromOrder.map(i => ({ ...i })) };
+      }
+    }
+    return plan;
+  });
+
+  // Default to today's or tomorrow's day
+  const todayIdx = new Date().getDay();
+  const defaultDay = WEEKDAYS[todayIdx === 0 ? 6 : todayIdx - 1];
+  const [selectedDay, setSelectedDay] = useState<WeekDay>(defaultDay);
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [showPackPicker, setShowPackPicker] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
@@ -186,6 +257,30 @@ export default function SubscriptionPlanEditorScreen() {
     );
   }, [selectedDay]);
 
+  const handleSkipDay = useCallback(async (day: WeekDay) => {
+    if (!order) return;
+    const dateKey = getDateKey(day);
+    const skipped = isDateSkipped(day);
+    if (skipped) {
+      await unskipDelivery(order.id, dateKey);
+      Alert.alert('Restored', `Delivery for ${WEEKDAY_LABELS[day]}, ${weekDates[day].getDate()} ${MONTH_SHORT[weekDates[day].getMonth()]} has been restored.`);
+    } else {
+      Alert.alert(
+        'Skip Delivery',
+        `Skip delivery for ${WEEKDAY_LABELS[day]}, ${weekDates[day].getDate()} ${MONTH_SHORT[weekDates[day].getMonth()]}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Skip', style: 'destructive', onPress: async () => {
+              const result = await skipDelivery(order.id, dateKey);
+              Alert.alert(result.success ? 'Skipped' : 'Cannot Skip', result.message);
+            },
+          },
+        ]
+      );
+    }
+  }, [order, getDateKey, isDateSkipped, skipDelivery, unskipDelivery, weekDates]);
+
   const handleSave = useCallback(async () => {
     if (!order) return;
     // Validate: at least one active day with items
@@ -201,10 +296,25 @@ export default function SubscriptionPlanEditorScreen() {
     ]);
   }, [order, weeklyPlan, updateWeeklyPlan, router]);
 
+  // For monthly subscriptions, redirect to calendar view which is the proper editor
+  React.useEffect(() => {
+    if (sub?.frequency === 'monthly') {
+      router.replace({ pathname: '/subscription-calendar' as any, params: { orderId: id } });
+    }
+  }, [sub, id, router]);
+
   if (!order || !sub) {
     return (
       <SafeAreaView style={styles.safe}>
         <Text style={{ textAlign: 'center', marginTop: 60 }}>Subscription not found</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (sub.frequency === 'monthly') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Text style={{ textAlign: 'center', marginTop: 60 }}>Redirecting to calendar...</Text>
       </SafeAreaView>
     );
   }
@@ -227,7 +337,9 @@ export default function SubscriptionPlanEditorScreen() {
             }} style={styles.backBtn}>
               <Icon name="arrow-left" size={24} color={themed.colors.text.primary} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, themed.textPrimary]}>Weekly Plan</Text>
+            <Text style={[styles.headerTitle, themed.textPrimary]}>
+              {sub.frequency === 'monthly' ? 'Monthly Plan' : sub.frequency === 'daily' ? 'Daily Plan' : 'Weekly Plan'}
+            </Text>
             <TouchableOpacity onPress={handleSave} disabled={!hasChanges}>
               <Text style={[styles.saveBtn, !hasChanges && styles.saveBtnDisabled]}>Save</Text>
             </TouchableOpacity>
@@ -236,17 +348,17 @@ export default function SubscriptionPlanEditorScreen() {
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Week Summary Banner */}
+        {/* Summary Banner */}
         <LinearGradient colors={COLORS.gradient.primary} style={styles.summaryBanner}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>{activeDays}</Text>
-              <Text style={styles.summaryLabel}>Active Days</Text>
+              <Text style={styles.summaryLabel}>{sub.frequency === 'monthly' ? 'Active Dates' : 'Active Days'}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>{'\u20B9'}{weekTotal}</Text>
-              <Text style={styles.summaryLabel}>Weekly Total</Text>
+              <Text style={styles.summaryLabel}>{sub.frequency === 'monthly' ? 'Monthly Total' : sub.frequency === 'daily' ? 'Daily Total' : 'Weekly Total'}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
@@ -255,6 +367,20 @@ export default function SubscriptionPlanEditorScreen() {
             </View>
           </View>
         </LinearGradient>
+
+        {/* Calendar View Link */}
+        <TouchableOpacity
+          style={[styles.calendarLink, themed.card]}
+          onPress={() => router.push({ pathname: '/subscription-calendar' as any, params: { orderId: id } })}
+          activeOpacity={0.8}
+        >
+          <Icon name="calendar-month" size={20} color={COLORS.primary} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.calendarLinkTitle, themed.textPrimary]}>Monthly Calendar View</Text>
+            <Text style={styles.calendarLinkDesc}>See full month delivery schedule, skip or restore days</Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={COLORS.text.muted} />
+        </TouchableOpacity>
 
         {/* Day Selector Tabs */}
         <ScrollView
@@ -267,6 +393,10 @@ export default function SubscriptionPlanEditorScreen() {
             const plan = weeklyPlan[day];
             const isSelected = day === selectedDay;
             const itemCount = plan.items.length;
+            const date = weekDates[day];
+            const skipped = isDateSkipped(day);
+            const todayFlag = isToday(day);
+            const tomorrowFlag = isTomorrow(day);
             return (
               <TouchableOpacity
                 key={day}
@@ -274,27 +404,44 @@ export default function SubscriptionPlanEditorScreen() {
                   styles.dayTab,
                   isSelected && styles.dayTabActive,
                   !plan.isActive && styles.dayTabInactive,
+                  skipped && !isSelected && styles.dayTabSkipped,
                 ]}
                 onPress={() => setSelectedDay(day)}
                 onLongPress={() => toggleDayActive(day)}
               >
+                {(todayFlag || tomorrowFlag) && (
+                  <Text style={[styles.dayTabFlag, isSelected && { color: '#FFF' }]}>
+                    {todayFlag ? 'Today' : 'Tmrw'}
+                  </Text>
+                )}
                 <Text style={[
                   styles.dayTabText,
                   isSelected && styles.dayTabTextActive,
                   !plan.isActive && styles.dayTabTextInactive,
+                  skipped && !isSelected && styles.dayTabTextSkipped,
                 ]}>
                   {day}
                 </Text>
-                {plan.isActive && itemCount > 0 && (
+                <Text style={[
+                  styles.dayTabDate,
+                  isSelected && styles.dayTabDateActive,
+                  skipped && !isSelected && styles.dayTabTextSkipped,
+                ]}>
+                  {date.getDate()} {MONTH_SHORT[date.getMonth()]}
+                </Text>
+                {skipped ? (
+                  <View style={[styles.dayTabSkipBadge, isSelected && { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
+                    <Text style={[styles.dayTabSkipText, isSelected && { color: '#FFF' }]}>Skipped</Text>
+                  </View>
+                ) : plan.isActive && itemCount > 0 ? (
                   <View style={[styles.dayTabBadge, isSelected && styles.dayTabBadgeActive]}>
                     <Text style={[styles.dayTabBadgeText, isSelected && styles.dayTabBadgeTextActive]}>
                       {itemCount}
                     </Text>
                   </View>
-                )}
-                {!plan.isActive && (
+                ) : !plan.isActive ? (
                   <Icon name="close-circle" size={12} color="#BDBDBD" style={{ marginTop: 2 }} />
-                )}
+                ) : null}
               </TouchableOpacity>
             );
           })}
@@ -303,12 +450,21 @@ export default function SubscriptionPlanEditorScreen() {
         {/* Day Toggle & Info */}
         <View style={[styles.dayHeaderCard, themed.card]}>
           <View style={styles.dayHeaderRow}>
-            <View>
-              <Text style={[styles.dayHeaderTitle, themed.textPrimary]}>
-                {WEEKDAY_LABELS[selectedDay]}
-              </Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[styles.dayHeaderTitle, themed.textPrimary]}>
+                  {WEEKDAY_LABELS[selectedDay]}
+                </Text>
+                <Text style={styles.dayHeaderDateBadge}>
+                  {weekDates[selectedDay].getDate()} {MONTH_SHORT[weekDates[selectedDay].getMonth()]}
+                </Text>
+                {isToday(selectedDay) && <Text style={styles.dayHeaderTodayBadge}>Today</Text>}
+                {isTomorrow(selectedDay) && <Text style={styles.dayHeaderTomorrowBadge}>Tomorrow</Text>}
+              </View>
               <Text style={styles.dayHeaderSub}>
-                {currentDayPlan.isActive
+                {isDateSkipped(selectedDay)
+                  ? 'Delivery skipped for this day'
+                  : currentDayPlan.isActive
                   ? currentDayPlan.items.length > 0
                     ? `${currentDayPlan.items.length} items \u00B7 \u20B9${dayTotal}`
                     : 'No items added yet'
@@ -329,6 +485,25 @@ export default function SubscriptionPlanEditorScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Skip / Restore button */}
+          {currentDayPlan.isActive && (
+            <TouchableOpacity
+              style={[styles.skipDayBtn, isDateSkipped(selectedDay) && styles.skipDayBtnRestore]}
+              onPress={() => handleSkipDay(selectedDay)}
+            >
+              <Icon
+                name={isDateSkipped(selectedDay) ? 'undo' : 'calendar-remove'}
+                size={16}
+                color={isDateSkipped(selectedDay) ? COLORS.primary : COLORS.status.error}
+              />
+              <Text style={[styles.skipDayBtnText, isDateSkipped(selectedDay) && styles.skipDayBtnTextRestore]}>
+                {isDateSkipped(selectedDay)
+                  ? `Restore delivery for ${weekDates[selectedDay].getDate()} ${MONTH_SHORT[weekDates[selectedDay].getMonth()]}`
+                  : `Skip delivery for ${weekDates[selectedDay].getDate()} ${MONTH_SHORT[weekDates[selectedDay].getMonth()]}`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {currentDayPlan.isActive && (
@@ -458,22 +633,28 @@ export default function SubscriptionPlanEditorScreen() {
 
         {/* Admin-Style Preparation Summary */}
         <View style={[styles.prepSection, themed.card]}>
-          <Text style={[styles.sectionTitle, themed.textPrimary]}>Weekly Preparation Summary</Text>
+          <Text style={[styles.sectionTitle, themed.textPrimary]}>
+            {sub.frequency === 'daily' ? 'Daily' : 'Weekly'} Preparation Summary
+          </Text>
           <Text style={styles.prepSubtitle}>What needs to be prepared each day</Text>
           {WEEKDAYS.map(day => {
             const plan = weeklyPlan[day];
             if (!plan.isActive || plan.items.length === 0) return null;
+            const date = weekDates[day];
+            const skipped = isDateSkipped(day);
             return (
-              <View key={day} style={styles.prepDayRow}>
-                <View style={styles.prepDayLabel}>
-                  <Text style={styles.prepDayText}>{day}</Text>
+              <View key={day} style={[styles.prepDayRow, skipped && { opacity: 0.4 }]}>
+                <View style={[styles.prepDayLabel, skipped && { backgroundColor: '#FFEBEE' }]}>
+                  <Text style={[styles.prepDayText, skipped && { color: COLORS.status.error }]}>{day}</Text>
+                  <Text style={[styles.prepDayDateText, skipped && { color: COLORS.status.error }]}>{date.getDate()}/{date.getMonth() + 1}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
+                  {skipped && <Text style={styles.prepSkippedLabel}>Skipped</Text>}
                   {plan.packName && (
                     <Text style={styles.prepPackLabel}>{plan.packName}</Text>
                   )}
                   {plan.items.map((item, i) => (
-                    <Text key={`${item.productId}-${i}`} style={styles.prepItem}>
+                    <Text key={`${item.productId}-${i}`} style={[styles.prepItem, skipped && { textDecorationLine: 'line-through' }]}>
                       {item.name} x{item.quantity}
                       {item.cutType ? ` (${CUT_OPTIONS.find(c => c.value === item.cutType)?.label || item.cutType})` : ''}
                     </Text>
@@ -602,27 +783,45 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 18, fontWeight: '800', color: '#FFF' },
   summaryLabel: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   summaryDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  // Calendar link
+  calendarLink: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
+  calendarLinkTitle: { fontSize: 13, fontWeight: '700' },
+  calendarLinkDesc: { fontSize: 10, color: COLORS.text.muted, marginTop: 1 },
   // Day tabs
   dayTabsScroll: { marginBottom: SPACING.md },
   dayTabsContainer: { gap: 8, paddingVertical: 2 },
   dayTab: {
-    width: 56, height: 64, borderRadius: RADIUS.md, backgroundColor: '#FFF',
+    width: 64, paddingVertical: 8, borderRadius: RADIUS.md, backgroundColor: '#FFF',
     alignItems: 'center', justifyContent: 'center', ...SHADOW.sm,
   },
   dayTabActive: { backgroundColor: COLORS.primary },
   dayTabInactive: { backgroundColor: '#F5F5F5', opacity: 0.7 },
+  dayTabSkipped: { backgroundColor: '#FFEBEE' },
+  dayTabFlag: { fontSize: 8, fontWeight: '800', color: '#F57C00', marginBottom: 1 },
   dayTabText: { fontSize: 13, fontWeight: '700', color: COLORS.text.secondary },
   dayTabTextActive: { color: '#FFF' },
   dayTabTextInactive: { color: '#BDBDBD' },
+  dayTabTextSkipped: { color: COLORS.status.error },
+  dayTabDate: { fontSize: 9, fontWeight: '600', color: COLORS.text.muted, marginTop: 1 },
+  dayTabDateActive: { color: 'rgba(255,255,255,0.8)' },
   dayTabBadge: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.full, paddingHorizontal: 6, paddingVertical: 1, marginTop: 2 },
   dayTabBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
   dayTabBadgeText: { fontSize: 9, fontWeight: '700', color: COLORS.primary },
   dayTabBadgeTextActive: { color: '#FFF' },
+  dayTabSkipBadge: { backgroundColor: '#FFEBEE', borderRadius: RADIUS.full, paddingHorizontal: 5, paddingVertical: 1, marginTop: 2 },
+  dayTabSkipText: { fontSize: 8, fontWeight: '700', color: COLORS.status.error },
   // Day header
   dayHeaderCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
   dayHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   dayHeaderTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text.primary },
-  dayHeaderSub: { fontSize: 12, color: COLORS.text.muted, marginTop: 2 },
+  dayHeaderDateBadge: { fontSize: 12, fontWeight: '700', color: COLORS.primary, backgroundColor: '#E8F5E9', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  dayHeaderTodayBadge: { fontSize: 9, fontWeight: '800', color: '#FFF', backgroundColor: '#F57C00', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  dayHeaderTomorrowBadge: { fontSize: 9, fontWeight: '800', color: '#FFF', backgroundColor: '#1565C0', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  dayHeaderSub: { fontSize: 12, color: COLORS.text.muted, marginTop: 4 },
+  skipDayBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: RADIUS.md, backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#FFCDD2' },
+  skipDayBtnRestore: { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' },
+  skipDayBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.status.error },
+  skipDayBtnTextRestore: { color: COLORS.primary },
   toggleBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full,
@@ -675,8 +874,10 @@ const styles = StyleSheet.create({
   prepSection: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
   prepSubtitle: { fontSize: 11, color: COLORS.text.muted, marginTop: -4, marginBottom: SPACING.md },
   prepDayRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  prepDayLabel: { width: 36, height: 28, borderRadius: 6, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center' },
+  prepDayLabel: { width: 42, borderRadius: 6, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', paddingVertical: 4 },
   prepDayText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
+  prepDayDateText: { fontSize: 8, fontWeight: '600', color: COLORS.text.muted, marginTop: 1 },
+  prepSkippedLabel: { fontSize: 10, fontWeight: '700', color: COLORS.status.error, marginBottom: 2 },
   prepPackLabel: { fontSize: 12, fontWeight: '700', color: COLORS.primary, marginBottom: 2 },
   prepItem: { fontSize: 12, color: COLORS.text.secondary, lineHeight: 18 },
   // Product picker modal

@@ -21,7 +21,7 @@ import type { CutType, Product } from '@/types';
 export default function ProductDetailScreen() {
   const router = useRouter();
   const themed = useThemedStyles();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const { addToCart, cartItems } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { getProductReviews, getAverageRating, markHelpful } = useReviews();
@@ -81,6 +81,10 @@ export default function ProductDetailScreen() {
 
   const handleAddToCart = () => {
     addToCart(product as Product, quantity, selectedWeight, selectedCut, instructions || undefined);
+    if (from === 'subscription') {
+      router.back();
+      return;
+    }
     setShowAddedToast(true);
     RNAnimated.sequence([
       RNAnimated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -213,24 +217,72 @@ export default function ProductDetailScreen() {
           {isCuttable && (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, themed.textPrimary]}>How do you want it cut?</Text>
+
+              {/* Before → After Preview */}
+              {selectedCut && (() => {
+                const activeCut = CUT_TYPE_OPTIONS.find(c => c.id === selectedCut);
+                return activeCut ? (
+                  <View style={styles.cutPreviewCard}>
+                    <View style={styles.cutPreviewRow}>
+                      <View style={styles.cutPreviewSide}>
+                        <Image source={{ uri: product!.image }} style={styles.cutPreviewImg} resizeMode="cover" />
+                        <View style={styles.cutPreviewLabelBg}>
+                          <Text style={styles.cutPreviewLabel}>Before</Text>
+                        </View>
+                        <Text style={styles.cutPreviewCaption}>Whole {product!.name}</Text>
+                      </View>
+                      <View style={styles.cutPreviewArrow}>
+                        <View style={styles.cutPreviewArrowCircle}>
+                          <Icon name="arrow-right" size={18} color="#FFF" />
+                        </View>
+                        <Text style={styles.cutPreviewArrowText}>{activeCut.label}</Text>
+                      </View>
+                      <View style={styles.cutPreviewSide}>
+                        <Image source={{ uri: activeCut.media.image }} style={styles.cutPreviewImg} resizeMode="cover" />
+                        <View style={[styles.cutPreviewLabelBg, { backgroundColor: COLORS.primary }]}>
+                          <Text style={styles.cutPreviewLabel}>After</Text>
+                        </View>
+                        <Text style={styles.cutPreviewCaption}>{activeCut.description}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.cutPreviewInfo}>
+                      <View style={styles.cutPreviewChip}>
+                        <Icon name="clock-outline" size={12} color="#1565C0" />
+                        <Text style={styles.cutPreviewChipText}>Freshly cut before delivery</Text>
+                      </View>
+                      <View style={styles.cutPreviewChip}>
+                        <Icon name="shield-check" size={12} color="#388E3C" />
+                        <Text style={styles.cutPreviewChipText}>Hygienic cutting</Text>
+                      </View>
+                    </View>
+                    {activeCut.media.videoUrl && (
+                      <TouchableOpacity
+                        style={styles.cutPreviewVideoBtn}
+                        onPress={() => setVideoModal({ url: activeCut.media.videoUrl!, label: activeCut.label })}
+                      >
+                        <Icon name="play-circle" size={16} color={COLORS.primary} />
+                        <Text style={styles.cutPreviewVideoBtnText}>Watch cutting demo</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : null;
+              })()}
+
+              {/* Cut Options Grid */}
               <View style={styles.cutGrid}>
                 {CUT_TYPE_OPTIONS.map(opt => {
                   const isActive = selectedCut === opt.id;
                   return (
                     <TouchableOpacity key={opt.id} style={[styles.cutCard, isActive && styles.cutCardActive]} onPress={() => setSelectedCut(isActive ? undefined : opt.id)}>
                       <Image source={{ uri: opt.media.image }} style={styles.cutImage} resizeMode="cover" />
+                      {isActive && (
+                        <View style={styles.cutCardCheck}>
+                          <Icon name="check-circle" size={16} color="#FFF" />
+                        </View>
+                      )}
                       <Text style={[styles.cutLabel, isActive && styles.cutLabelActive]}>{opt.label}</Text>
                       <Text style={[styles.cutFeeText, isActive && styles.cutFeeActive]}>+{'\u20B9'}{opt.fee}</Text>
                       <Text style={styles.cutDesc} numberOfLines={2}>{opt.description}</Text>
-                      {opt.media.videoUrl && (
-                        <TouchableOpacity
-                          style={styles.cutVideoBtn}
-                          onPress={() => setVideoModal({ url: opt.media.videoUrl!, label: opt.label })}
-                        >
-                          <Icon name="play-circle" size={14} color={COLORS.primary} />
-                          <Text style={styles.cutVideoBtnText}>Watch</Text>
-                        </TouchableOpacity>
-                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -238,7 +290,7 @@ export default function ProductDetailScreen() {
               {!selectedCut && (
                 <View style={styles.noCutHint}>
                   <Icon name="information-outline" size={14} color={COLORS.text.muted} />
-                  <Text style={styles.noCutHintText}>No cut selected = whole/uncut delivery</Text>
+                  <Text style={styles.noCutHintText}>Tap a cut style to see before & after preview</Text>
                 </View>
               )}
             </View>
@@ -485,17 +537,47 @@ const styles = StyleSheet.create({
   weightChipTextActive: { color: COLORS.primary },
   weightChipPrice: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
   weightChipPriceActive: { color: COLORS.primary },
+  /* Cut Preview (Before → After) */
+  cutPreviewCard: {
+    backgroundColor: '#FAFAFA', borderRadius: RADIUS.lg, padding: SPACING.md,
+    marginBottom: SPACING.md, borderWidth: 1, borderColor: '#E8F5E9',
+  },
+  cutPreviewRow: { flexDirection: 'row', alignItems: 'center' },
+  cutPreviewSide: { flex: 1, alignItems: 'center' },
+  cutPreviewImg: { width: 90, height: 90, borderRadius: RADIUS.lg, borderWidth: 2, borderColor: '#FFF' },
+  cutPreviewLabelBg: {
+    position: 'absolute', top: 4, left: '50%', marginLeft: -28,
+    backgroundColor: '#FF9800', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 2,
+  },
+  cutPreviewLabel: { fontSize: 9, fontWeight: '800', color: '#FFF' },
+  cutPreviewCaption: { fontSize: 10, color: COLORS.text.secondary, marginTop: 6, textAlign: 'center', fontWeight: '600' },
+  cutPreviewArrow: { alignItems: 'center', paddingHorizontal: 6 },
+  cutPreviewArrowCircle: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  cutPreviewArrowText: { fontSize: 9, fontWeight: '700', color: COLORS.primary, marginTop: 4 },
+  cutPreviewInfo: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: SPACING.md },
+  cutPreviewChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFF', borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 5 },
+  cutPreviewChipText: { fontSize: 9, fontWeight: '600', color: COLORS.text.secondary },
+  cutPreviewVideoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: SPACING.sm, paddingVertical: 8, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.primary, backgroundColor: '#FFF',
+  },
+  cutPreviewVideoBtnText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
+
+  /* Cut Grid */
   cutGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  cutCard: { width: '31%', alignItems: 'center', paddingBottom: 8, borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF', overflow: 'hidden' },
+  cutCard: { width: '31%', alignItems: 'center', paddingBottom: 8, borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#FFF', overflow: 'hidden', position: 'relative' },
   cutCardActive: { borderColor: COLORS.primary, backgroundColor: '#E8F5E9' },
+  cutCardCheck: { position: 'absolute', top: 4, right: 4, backgroundColor: COLORS.primary, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
   cutImage: { width: '100%', height: 50, marginBottom: 4 },
   cutLabel: { fontSize: 11, fontWeight: '700', color: COLORS.text.secondary, textAlign: 'center' },
   cutLabelActive: { color: COLORS.primary },
   cutFeeText: { fontSize: 10, fontWeight: '600', color: COLORS.text.muted, marginTop: 2 },
   cutFeeActive: { color: COLORS.primary },
   cutDesc: { fontSize: 9, color: COLORS.text.muted, textAlign: 'center', marginTop: 3, lineHeight: 12, paddingHorizontal: 4 },
-  cutVideoBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  cutVideoBtnText: { fontSize: 9, fontWeight: '700', color: COLORS.primary },
   noCutHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACING.sm, paddingVertical: 6 },
   noCutHintText: { fontSize: 11, color: COLORS.text.muted },
   quickChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: SPACING.sm },

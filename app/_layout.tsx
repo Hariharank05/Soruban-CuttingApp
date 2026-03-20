@@ -14,7 +14,7 @@ import { LoyaltyProvider } from '@/context/LoyaltyContext';
 import { ReviewProvider } from '@/context/ReviewContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import { SavedCartProvider } from '@/context/SavedCartContext';
-import { DietProvider } from '@/context/DietContext';
+import { DietProvider, useDiet } from '@/context/DietContext';
 import { RecentlyViewedProvider } from '@/context/RecentlyViewedContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -22,6 +22,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 function RootLayoutNav() {
   const { isLoading, isAuthenticated } = useAuth();
   const { isDark, colors } = useTheme();
+  const { profileComplete } = useDiet();
   const segments = useSegments();
   const router = useRouter();
   const hasNavigated = useRef(false);
@@ -30,6 +31,7 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inProfileSetup = segments[0] === 'user-profile-setup';
 
     if (!isAuthenticated && !inAuthGroup) {
       if (!hasNavigated.current) {
@@ -39,12 +41,18 @@ function RootLayoutNav() {
     } else if (isAuthenticated && inAuthGroup) {
       if (!hasNavigated.current) {
         hasNavigated.current = true;
-        router.replace('/(tabs)' as any);
+        if (!profileComplete) {
+          router.replace('/user-profile-setup' as any);
+        } else {
+          router.replace('/(tabs)' as any);
+        }
       }
+    } else if (isAuthenticated && inProfileSetup && profileComplete) {
+      router.replace('/(tabs)' as any);
     } else {
       hasNavigated.current = false;
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, profileComplete]);
 
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
   const navTheme = {
@@ -108,6 +116,12 @@ function RootLayoutNav() {
         <Stack.Screen name="order-history-calendar" />
         <Stack.Screen name="order-invoice" />
         <Stack.Screen name="delivery-tracking" />
+        <Stack.Screen name="subscription-setup" />
+        <Stack.Screen name="nutritionist" />
+        <Stack.Screen name="user-profile-setup" />
+        <Stack.Screen name="group-subscription" />
+        <Stack.Screen name="corporate-subscription" />
+        <Stack.Screen name="recipe-cart" />
       </Stack>
       </View>
     </NavThemeProvider>

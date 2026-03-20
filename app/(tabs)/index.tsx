@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Image, useWindowDimensions, StatusBar, FlatList, Alert,
+  Animated as RNAnimated, Modal,
 } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +21,8 @@ import { useLoyalty } from '@/context/LoyaltyContext';
 import { useRecentlyViewed } from '@/context/RecentlyViewedContext';
 import { SEASONAL_PICKS } from '@/data/recipes';
 import { FESTIVAL_PACKS } from '@/data/festivalPacks';
+import { useDiet } from '@/context/DietContext';
+import { SPECIAL_PLANS } from '@/data/specialPlans';
 
 const CATEGORIES = [
   { key: 'Vegetables', label: 'Vegetables', image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=200&q=80', color: '#E8F5E9' },
@@ -30,11 +33,11 @@ const CATEGORIES = [
 ];
 
 const OFFERS = [
-  { id: '1', title: 'Fresh Cut Vegetables & Fruits', desc: 'Select your veggies, choose your cut style', bg: ['#388E3C', '#4CAF50'] as const, icon: 'shopping' as const, route: '/browse', params: { category: 'Vegetables' }, btn: 'Order Now' },
-  { id: '2', title: 'Free Cutting on First Order', desc: 'Choose any cut style absolutely free!', bg: ['#1565C0', '#1E88E5'] as const, icon: 'tag-outline' as const, route: null, params: null, btn: '' },
-  { id: '3', title: 'Dish Packs from \u20B995', desc: 'Sambar, Biryani & more - pre-cut for your dish!', bg: ['#E65100', '#F57C00'] as const, icon: 'food-variant' as const, route: '/(tabs)/packs', params: null, btn: 'View Packs' },
-  { id: '4', title: 'Healthy Diet Packs', desc: 'Low calorie, high protein foods for fitness lovers', bg: ['#7B1FA2', '#9C27B0'] as const, icon: 'heart-pulse' as const, route: '/browse', params: { category: 'Diet Foods' }, btn: 'Explore' },
-  { id: '5', title: 'Buy 2 Get 1 Free', desc: 'On all seasonal fruit packs this week!', bg: ['#C62828', '#EF5350'] as const, icon: 'fruit-watermelon' as const, route: '/browse', params: { category: 'Fruits' }, btn: 'Shop Now' },
+  { id: '1', title: 'FLAT 50% OFF', subtitle: '& FREE Delivery', desc: 'On your first order of fresh cut veggies', bg: ['#2E7D32', '#43A047'] as const, icon: 'leaf' as const, route: '/browse', params: { category: 'Vegetables' }, btn: 'Order Now', accent: '#81C784' },
+  { id: '2', title: 'FREE Cutting', subtitle: 'On First Order', desc: 'Choose any cut style absolutely free!', bg: ['#0D47A1', '#1565C0'] as const, icon: 'content-cut' as const, route: null, params: null, btn: '', accent: '#64B5F6' },
+  { id: '3', title: 'Dish Packs', subtitle: 'from \u20B995', desc: 'Sambar, Biryani & more - pre-cut for your dish!', bg: ['#BF360C', '#E65100'] as const, icon: 'food-variant' as const, route: '/(tabs)/packs', params: null, btn: 'View Packs', accent: '#FF8A65' },
+  { id: '4', title: 'EAT RIGHT', subtitle: 'Win up to \u20B9300', desc: 'Healthy diet packs for fitness lovers', bg: ['#4A148C', '#7B1FA2'] as const, icon: 'heart-pulse' as const, route: '/browse', params: { category: 'Diet Foods' }, btn: 'Explore', accent: '#CE93D8' },
+  { id: '5', title: 'Buy 2 Get 1', subtitle: 'FREE', desc: 'On all seasonal fruit packs this week!', bg: ['#B71C1C', '#C62828'] as const, icon: 'fruit-watermelon' as const, route: '/browse', params: { category: 'Fruits' }, btn: 'Shop Now', accent: '#EF9A9A' },
 ];
 
 const POPULAR_IDS = ['1', '4', '13', '7', '19', '22', '11', '23'];
@@ -44,6 +47,154 @@ const LIFESTYLE_TABS = [
   { key: 'diet', label: 'Diet Foods', icon: 'heart-pulse' as const, color: '#1E88E5', category: 'Diet Foods' },
   { key: 'sports', label: 'Sports & Gym', icon: 'dumbbell' as const, color: '#E53935', category: 'Sports Nutrition' },
 ] as const;
+
+/* ─── Animated Section Wrapper (fade + slide up) ─── */
+function FadeInSection({ delay = 0, children }: { delay?: number; children: React.ReactNode }) {
+  const opacity = useRef(new RNAnimated.Value(0)).current;
+  const translateY = useRef(new RNAnimated.Value(30)).current;
+
+  useEffect(() => {
+    RNAnimated.parallel([
+      RNAnimated.timing(opacity, { toValue: 1, duration: 500, delay, useNativeDriver: true }),
+      RNAnimated.timing(translateY, { toValue: 0, duration: 500, delay, useNativeDriver: true }),
+    ]).start();
+  }, [delay, opacity, translateY]);
+
+  return (
+    <RNAnimated.View style={{ opacity, transform: [{ translateY }] }}>
+      {children}
+    </RNAnimated.View>
+  );
+}
+
+/* ─── Bounce Card Wrapper ─── */
+function BounceCard({ children, onPress, style }: { children: React.ReactNode; onPress: () => void; style?: any }) {
+  const scale = useRef(new RNAnimated.Value(1)).current;
+
+  const handlePressIn = () => {
+    RNAnimated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  };
+  const handlePressOut = () => {
+    RNAnimated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 6 }).start();
+  };
+
+  return (
+    <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <RNAnimated.View style={[style, { transform: [{ scale }] }]}>
+        {children}
+      </RNAnimated.View>
+    </TouchableOpacity>
+  );
+}
+
+/* ─── Pulsing FAB Badge ─── */
+function PulsingDot() {
+  const scale = useRef(new RNAnimated.Value(1)).current;
+
+  useEffect(() => {
+    const pulse = () => {
+      RNAnimated.sequence([
+        RNAnimated.timing(scale, { toValue: 1.4, duration: 800, useNativeDriver: true }),
+        RNAnimated.timing(scale, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]).start(() => pulse());
+    };
+    pulse();
+  }, [scale]);
+
+  return (
+    <RNAnimated.View style={{
+      position: 'absolute', top: -3, right: -3,
+      width: 10, height: 10, borderRadius: 5,
+      backgroundColor: '#FF5722',
+      transform: [{ scale }],
+    }} />
+  );
+}
+
+/* ─── Welcome Offer Modal (Swiggy-style popup) ─── */
+function WelcomeModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const scale = useRef(new RNAnimated.Value(0.8)).current;
+  const opacity = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      RNAnimated.parallel([
+        RNAnimated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 12, bounciness: 8 }),
+        RNAnimated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible, scale, opacity]);
+
+  const handleClose = () => {
+    RNAnimated.parallel([
+      RNAnimated.timing(scale, { toValue: 0.8, duration: 200, useNativeDriver: true }),
+      RNAnimated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => onClose());
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+      <RNAnimated.View style={[welcomeStyles.overlay, { opacity }]}>
+        <RNAnimated.View style={[welcomeStyles.card, { transform: [{ scale }] }]}>
+          <LinearGradient colors={['#2E7D32', '#43A047', '#66BB6A']} style={welcomeStyles.cardGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={welcomeStyles.cardDecor1} />
+            <View style={welcomeStyles.cardDecor2} />
+            <View style={{ zIndex: 1, alignItems: 'center' }}>
+              <View style={welcomeStyles.iconCircle}>
+                <Icon name="leaf" size={36} color="#FFF" />
+              </View>
+              <Text style={welcomeStyles.title}>Welcome to Chopify!</Text>
+              <Text style={welcomeStyles.subtitle}>Fresh cut vegetables & fruits{'\n'}delivered to your door</Text>
+              <View style={welcomeStyles.offerBadge}>
+                <Text style={welcomeStyles.offerText}>FLAT 50% OFF</Text>
+                <Text style={welcomeStyles.offerSub}>on your first order</Text>
+              </View>
+              <View style={welcomeStyles.features}>
+                {[
+                  { icon: 'content-cut', text: 'Choose your cut style' },
+                  { icon: 'package-variant', text: 'Ready dish packs' },
+                  { icon: 'truck-fast', text: 'Quick delivery' },
+                ].map((f, i) => (
+                  <View key={i} style={welcomeStyles.featureRow}>
+                    <Icon name={f.icon as any} size={16} color="rgba(255,255,255,0.9)" />
+                    <Text style={welcomeStyles.featureText}>{f.text}</Text>
+                  </View>
+                ))}
+              </View>
+              <TouchableOpacity style={welcomeStyles.cta} onPress={handleClose} activeOpacity={0.9}>
+                <Text style={welcomeStyles.ctaText}>Start Shopping</Text>
+                <Icon name="arrow-right" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+          <TouchableOpacity style={welcomeStyles.closeBtn} onPress={handleClose}>
+            <Icon name="close" size={22} color="#FFF" />
+          </TouchableOpacity>
+        </RNAnimated.View>
+      </RNAnimated.View>
+    </Modal>
+  );
+}
+
+const welcomeStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 30 },
+  card: { width: '100%', borderRadius: RADIUS.xl, overflow: 'hidden', ...SHADOW.lg },
+  cardGrad: { padding: 28, alignItems: 'center', position: 'relative', overflow: 'hidden' },
+  cardDecor1: { position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.08)' },
+  cardDecor2: { position: 'absolute', bottom: -50, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.06)' },
+  iconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: '900', color: '#FFF', letterSpacing: -0.5, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 20, marginTop: 6 },
+  offerBadge: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, paddingHorizontal: 24, paddingVertical: 14, marginTop: 20, alignItems: 'center', ...SHADOW.sm },
+  offerText: { fontSize: 22, fontWeight: '900', color: '#E53935', letterSpacing: -0.5 },
+  offerSub: { fontSize: 12, color: COLORS.text.muted, marginTop: 2, fontWeight: '600' },
+  features: { marginTop: 20, gap: 10 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featureText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: '600' },
+  cta: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', borderRadius: RADIUS.full, paddingHorizontal: 28, paddingVertical: 14, marginTop: 24, ...SHADOW.md },
+  ctaText: { fontSize: 15, fontWeight: '800', color: COLORS.primary },
+  closeBtn: { position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+});
 
 /* ─── Offers Carousel ─── */
 function OffersCarousel({ width }: { width: number }) {
@@ -87,9 +238,13 @@ function OffersCarousel({ width }: { width: number }) {
               activeOpacity={0.9}
               onPress={() => { if (item.route) router.push(item.params ? { pathname: item.route, params: item.params } as any : item.route as any); }}
             >
-              <LinearGradient colors={item.bg} style={styles.offerCard}>
-                <View style={{ flex: 1 }}>
+              <LinearGradient colors={item.bg} style={styles.offerCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                {/* Decorative circles */}
+                <View style={[styles.offerDecor1, { backgroundColor: item.accent }]} />
+                <View style={[styles.offerDecor2, { backgroundColor: item.accent }]} />
+                <View style={{ flex: 1, zIndex: 1 }}>
                   <Text style={styles.offerTitle}>{item.title}</Text>
+                  {item.subtitle ? <Text style={styles.offerSubtitle}>{item.subtitle}</Text> : null}
                   <Text style={styles.offerDesc}>{item.desc}</Text>
                   {item.btn ? (
                     <View style={styles.offerBtn}>
@@ -98,8 +253,8 @@ function OffersCarousel({ width }: { width: number }) {
                     </View>
                   ) : null}
                 </View>
-                <View style={styles.offerIconWrap}>
-                  <Icon name={item.icon} size={36} color="rgba(255,255,255,0.35)" />
+                <View style={[styles.offerIconWrap, { zIndex: 1 }]}>
+                  <Icon name={item.icon} size={48} color="rgba(255,255,255,0.5)" />
                 </View>
               </LinearGradient>
             </TouchableOpacity>
@@ -152,22 +307,31 @@ function AddToCartButton({ item }: { item: any }) {
   );
 }
 
-/* ─── Product Mini Card (reusable) ─── */
+/* ─── Product Mini Card (Zomato-style reusable) ─── */
 function ProductMiniCard({ item, themed }: { item: any; themed: any }) {
   const router = useRouter();
   return (
     <TouchableOpacity
-      style={[styles.miniCard, themed.card]}
+      style={styles.miniCard}
       activeOpacity={0.85}
       onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
     >
-      <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
-      <View style={styles.miniBody}>
-        <Text style={styles.miniName} numberOfLines={1}>{item.name}</Text>
-        <View style={styles.miniPriceRow}>
-          <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
-          <AddToCartButton item={item} />
+      <View style={styles.miniImageWrap}>
+        <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
+        {item.discount && (
+          <View style={styles.miniOfferBadge}>
+            <Text style={styles.miniOfferText}>{item.discount}</Text>
+          </View>
+        )}
+        <View style={styles.miniPriceBadge}>
+          <Icon name="star" size={10} color="#FFF" />
+          <Text style={styles.miniPriceBadgeText}>{'\u20B9'}{item.price}</Text>
         </View>
+      </View>
+      <Text style={[styles.miniName, themed.textPrimary]} numberOfLines={1}>{item.name}</Text>
+      <View style={styles.miniInfoRow}>
+        <Icon name="weight" size={12} color={COLORS.text.muted} />
+        <Text style={styles.miniUnit}>{item.unit}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -179,8 +343,41 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const { handleScroll } = useScrollContext();
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const themed = useThemedStyles();
+  const { userName, userCategory, lifestyle, healthGoals, gender } = useDiet();
   const [lifestyleTab, setLifestyleTab] = useState<'healthy' | 'diet' | 'sports'>('healthy');
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  /* ─── Personalized "For You" recommendations ─── */
+  const forYouPlans = useMemo(() => {
+    if (!userCategory) return [];
+    return SPECIAL_PLANS.filter(plan => {
+      // Match by lifestyle
+      if (plan.targetLifestyle?.length && lifestyle && plan.targetLifestyle.includes(lifestyle as any)) return true;
+      // Match by goals
+      if (plan.targetGoals?.length && healthGoals.length > 0) {
+        if (plan.targetGoals.some(g => healthGoals.includes(g))) return true;
+      }
+      // Match by gender
+      if (plan.targetGender?.length && gender && plan.targetGender.includes(gender as any)) {
+        // Also check lifestyle or goals overlap
+        if (plan.targetLifestyle?.includes(lifestyle as any)) return true;
+        if (plan.targetGoals?.some(g => healthGoals.includes(g))) return true;
+      }
+      return false;
+    }).slice(0, 4);
+  }, [userCategory, lifestyle, healthGoals, gender]);
+
+  const forYouProducts = useMemo(() => {
+    if (!userCategory || forYouPlans.length === 0) return [];
+    // Collect product IDs from recommended plans
+    const productIds = new Set<string>();
+    forYouPlans.forEach(plan => {
+      plan.dailyItems.forEach(item => productIds.add(item.productId));
+    });
+    return productsData.filter(p => productIds.has(p.id)).slice(0, 8);
+  }, [userCategory, forYouPlans]);
 
   const popularProducts = useMemo(() => productsData.filter(p => POPULAR_IDS.includes(p.id)), []);
   const healthySnacks = useMemo(() => productsData.filter(p => p.category === 'Healthy Snacks').slice(0, 6), []);
@@ -194,6 +391,71 @@ export default function HomeScreen() {
     const itemIds = new Set<string>();
     orders.slice(0, 5).forEach(o => o.items.forEach(i => { if (itemIds.size < 8) itemIds.add(i.id); }));
     return productsData.filter(p => itemIds.has(p.id));
+  }, [orders]);
+
+  // Show welcome modal for new users
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (orders.length === 0) setShowWelcome(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  /* ─── Smart Reorder: analyze order frequency patterns ─── */
+  const smartReorder = useMemo(() => {
+    if (orders.length < 1) return null;
+    const deliveredOrders = orders.filter(o => o.status === 'delivered' || o.status === 'placed' || o.status === 'confirmed');
+    if (deliveredOrders.length === 0) return null;
+
+    // Count how many times each item was ordered & track cut preferences
+    const itemFreq: Record<string, { count: number; lastOrdered: string; cutType?: string; name: string; qty: number }> = {};
+    deliveredOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (itemFreq[item.id]) {
+          itemFreq[item.id].count += 1;
+          if (new Date(order.createdAt) > new Date(itemFreq[item.id].lastOrdered)) {
+            itemFreq[item.id].lastOrdered = order.createdAt;
+            if (item.cutType) itemFreq[item.id].cutType = item.cutType;
+          }
+        } else {
+          itemFreq[item.id] = { count: 1, lastOrdered: order.createdAt, cutType: item.cutType, name: item.name, qty: item.quantity };
+        }
+      });
+    });
+
+    // Find items ordered 2+ times (frequently bought)
+    const frequentItems = Object.entries(itemFreq)
+      .filter(([_, data]) => data.count >= 1)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8);
+
+    if (frequentItems.length === 0) return null;
+
+    // Calculate days since last order
+    const lastOrderDate = new Date(deliveredOrders[0].createdAt);
+    const daysSince = Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Estimate average order interval
+    let avgInterval = 7;
+    if (deliveredOrders.length >= 2) {
+      const firstDate = new Date(deliveredOrders[deliveredOrders.length - 1].createdAt).getTime();
+      const lastDate = new Date(deliveredOrders[0].createdAt).getTime();
+      avgInterval = Math.max(1, Math.round((lastDate - firstDate) / (1000 * 60 * 60 * 24 * (deliveredOrders.length - 1))));
+    }
+
+    const isRunningLow = daysSince >= Math.max(1, avgInterval - 1);
+    const daysUntilReorder = Math.max(0, avgInterval - daysSince);
+
+    // Get product details
+    const products = frequentItems.map(([id, data]) => {
+      const product = productsData.find(p => p.id === id);
+      return product ? { ...product, orderCount: data.count, cutType: data.cutType, lastQty: data.qty } : null;
+    }).filter(Boolean) as (typeof productsData[0] & { orderCount: number; cutType?: string; lastQty: number })[];
+
+    // Estimate total for quick reorder
+    const estimatedTotal = products.reduce((sum, p) => sum + p.price, 0);
+
+    return { products, daysSince, avgInterval, isRunningLow, daysUntilReorder, estimatedTotal, totalOrders: deliveredOrders.length };
   }, [orders]);
 
   const recentlyViewedProducts = useMemo(() => {
@@ -213,6 +475,23 @@ export default function HomeScreen() {
   const activeLifestyle = LIFESTYLE_TABS.find(t => t.key === lifestyleTab)!;
 
   const cardW = (width - SPACING.base * 2 - 10) / 2;
+
+  /* ─── Sticky header on scroll (Android-compatible) ─── */
+  const [stickyVisible, setStickyVisible] = useState(false);
+  const stickyRef = useRef(false);
+
+  const onMainScroll = useCallback((e: any) => {
+    handleScroll(e);
+    const y = e.nativeEvent.contentOffset.y;
+    // Show sticky when carousel is scrolled past (~200px)
+    if (y > 190 && !stickyRef.current) {
+      stickyRef.current = true;
+      setStickyVisible(true);
+    } else if (y <= 190 && stickyRef.current) {
+      stickyRef.current = false;
+      setStickyVisible(false);
+    }
+  }, [handleScroll]);
 
   return (
     <SafeAreaView style={[styles.safe, themed.safeArea]} edges={['top', 'bottom']}>
@@ -258,54 +537,229 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
+      {/* ─── Sticky Categories + Filters overlay (shown when scrolled past carousel) ─── */}
+      {stickyVisible && (
+        <View style={styles.stickyOverlay}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            {CATEGORIES.map(cat => (
+              <BounceCard
+                key={cat.key}
+                style={styles.categoryCard}
+                onPress={() => router.push({ pathname: '/browse', params: { category: cat.key } })}
+              >
+                <View style={styles.categoryImageWrap}>
+                  <Image source={{ uri: cat.image }} style={styles.categoryImage} resizeMode="cover" />
+                </View>
+                <Text style={[styles.categoryLabel, themed.textPrimary]}>{cat.label}</Text>
+              </BounceCard>
+            ))}
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsScroll}>
+            <TouchableOpacity
+              style={styles.filterChipPrimary}
+              activeOpacity={0.8}
+              onPress={() => router.push('/browse' as any)}
+            >
+              <Icon name="tune-variant" size={15} color={COLORS.text.primary} />
+              <Text style={styles.filterChipPrimaryText}>Filters</Text>
+            </TouchableOpacity>
+            {([
+              { label: 'Under ₹150', icon: 'tag-outline' as const, params: { maxPrice: '150' } },
+              { label: 'Fresh Cut', icon: 'content-cut' as const, params: { tag: 'fresh-cut' } },
+              { label: 'Rating 4.0+', icon: 'star' as const, params: { minRating: '4' } },
+              { label: 'Offers', icon: 'percent-outline' as const, params: { hasDiscount: 'true' } },
+              { label: 'Organic', icon: 'leaf' as const, params: { tag: 'organic' } },
+            ] as const).map((chip) => (
+              <TouchableOpacity
+                key={chip.label}
+                style={styles.filterChip}
+                activeOpacity={0.8}
+                onPress={() => router.push({ pathname: '/browse', params: chip.params } as any)}
+              >
+                <Icon name={chip.icon} size={13} color={COLORS.text.secondary} />
+                <Text style={styles.filterChipText}>{chip.label}</Text>
+                <Icon name="chevron-down" size={13} color={COLORS.text.muted} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        onScroll={onMainScroll}
+        scrollEventThrottle={16}
+      >
 
         {/* ━━━ 1. OFFERS CAROUSEL ━━━ */}
         <OffersCarousel width={width} />
 
-        {/* ━━━ 2. CATEGORIES ━━━ */}
-        <Text style={[styles.sectionTitle, themed.textPrimary]}>Shop by Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-          {CATEGORIES.map(cat => (
+        {/* ━━━ 2. CATEGORIES + FILTERS (in-flow, scrolls normally) ━━━ */}
+        <View style={styles.stickySection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            {CATEGORIES.map(cat => (
+              <BounceCard
+                key={cat.key}
+                style={styles.categoryCard}
+                onPress={() => router.push({ pathname: '/browse', params: { category: cat.key } })}
+              >
+                <View style={styles.categoryImageWrap}>
+                  <Image source={{ uri: cat.image }} style={styles.categoryImage} resizeMode="cover" />
+                </View>
+                <Text style={[styles.categoryLabel, themed.textPrimary]}>{cat.label}</Text>
+              </BounceCard>
+            ))}
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsScroll}>
             <TouchableOpacity
-              key={cat.key}
-              style={[styles.categoryCard, { backgroundColor: cat.color }]}
-              onPress={() => router.push({ pathname: '/browse', params: { category: cat.key } })}
+              style={styles.filterChipPrimary}
               activeOpacity={0.8}
+              onPress={() => router.push('/browse' as any)}
             >
-              <Image source={{ uri: cat.image }} style={styles.categoryImage} resizeMode="cover" />
-              <Text style={styles.categoryLabel}>{cat.label}</Text>
+              <Icon name="tune-variant" size={15} color={COLORS.text.primary} />
+              <Text style={styles.filterChipPrimaryText}>Filters</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+            {([
+              { label: 'Under ₹150', icon: 'tag-outline' as const, params: { maxPrice: '150' } },
+              { label: 'Fresh Cut', icon: 'content-cut' as const, params: { tag: 'fresh-cut' } },
+              { label: 'Rating 4.0+', icon: 'star' as const, params: { minRating: '4' } },
+              { label: 'Offers', icon: 'percent-outline' as const, params: { hasDiscount: 'true' } },
+              { label: 'Organic', icon: 'leaf' as const, params: { tag: 'organic' } },
+            ] as const).map((chip) => (
+              <TouchableOpacity
+                key={chip.label}
+                style={styles.filterChip}
+                activeOpacity={0.8}
+                onPress={() => router.push({ pathname: '/browse', params: chip.params } as any)}
+              >
+                <Icon name={chip.icon} size={13} color={COLORS.text.secondary} />
+                <Text style={styles.filterChipText}>{chip.label}</Text>
+                <Icon name="chevron-down" size={13} color={COLORS.text.muted} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Active subscriptions card removed from home — manage via Orders tab or Profile */}
+
+        {/* ━━━ SUBSCRIPTION PROMO ━━━ */}
+        <TouchableOpacity
+          style={{ marginHorizontal: SPACING.base, marginTop: SECTION_GAP, borderRadius: RADIUS.xl, overflow: 'hidden', ...SHADOW.lg }}
+          onPress={() => router.push('/subscription-setup' as any)}
+          activeOpacity={0.85}
+        >
+          <LinearGradient colors={['#0D47A1', '#1565C0', '#1976D2']} style={{ padding: 20, position: 'relative', overflow: 'hidden' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+            <View style={{ position: 'absolute', bottom: -30, left: 40, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+                <Icon name="calendar-clock" size={26} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFF', letterSpacing: -0.3 }}>Subscribe & Save</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4, lineHeight: 17 }}>Daily, weekly or monthly deliveries</Text>
+              </View>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: RADIUS.full, paddingHorizontal: 14, paddingVertical: 8 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>Start</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* ━━━ QUICK ACCESS CARD ━━━ */}
-        <View style={[styles.quickAccessCard, themed.card]}>
+        {/* <View style={[styles.quickAccessCard, themed.card]}>
           <View style={styles.quickAccessGrid}>
             {([
               { icon: 'ticket-percent' as const, label: 'Offers', color: '#E65100', bg: '#FFF3E0', route: '/offers-coupons' },
               { icon: 'star-circle' as const, label: 'Rewards', color: '#7B1FA2', bg: '#F3E5F5', route: '/loyalty' },
-              { icon: 'book-open-variant' as const, label: 'Recipes', color: '#00897B', bg: '#E0F2F1', route: '/community-recipes' },
+              { icon: 'pot-steam' as const, label: 'Recipe Cart', color: '#00897B', bg: '#E0F2F1', route: '/recipe-cart' },
               { icon: 'package-variant' as const, label: 'My Pack', color: COLORS.green, bg: '#E8F5E9', route: '/create-pack' },
               { icon: 'cart-heart' as const, label: 'Saved Carts', color: '#E91E63', bg: '#FCE4EC', route: '/saved-carts' },
               { icon: 'food-apple' as const, label: 'Diet Plan', color: '#FF6F00', bg: '#FFF8E1', route: '/diet-preferences' },
               { icon: 'chart-line' as const, label: 'Analytics', color: '#1565C0', bg: '#E3F2FD', route: '/spending-analytics' },
               { icon: 'account-group' as const, label: 'Referral', color: '#6D4C41', bg: '#EFEBE9', route: '/referral' },
             ] as const).map((item) => (
-              <TouchableOpacity
+              <BounceCard
                 key={item.route}
                 style={styles.quickAccessItem}
                 onPress={() => router.push(item.route as any)}
-                activeOpacity={0.7}
               >
                 <View style={[styles.quickAccessIconWrap, { backgroundColor: item.bg }]}>
-                  <Icon name={item.icon} size={22} color={item.color} />
+                  <Icon name={item.icon} size={24} color={item.color} />
                 </View>
                 <Text style={styles.quickAccessLabel} numberOfLines={1}>{item.label}</Text>
-              </TouchableOpacity>
+              </BounceCard>
             ))}
           </View>
-        </View>
+        </View> */}
+
+        {/* ━━━ FOR YOU - Personalized Section ━━━ */}
+        {forYouProducts.length > 0 && (
+          <>
+            <View style={styles.sectionHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Icon name="star-circle" size={20} color="#FF6F00" />
+                <Text style={[styles.sectionTitle, themed.textPrimary, { marginTop: 0, marginBottom: 0 }]}>
+                  Recommended For You{userName ? `, ${userName.split(' ')[0]}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/diet-preferences' as any)}>
+                <Text style={styles.viewAllLink}>Edit Goals</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Recommended Plans (shown first) */}
+            {forYouPlans.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                {forYouPlans.map(plan => (
+                  <TouchableOpacity
+                    key={plan.id}
+                    style={styles.forYouPlanCard}
+                    onPress={() => router.push('/subscription-setup' as any)}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.forYouPlanImageWrap}>
+                      <Image source={{ uri: plan.image }} style={styles.forYouPlanImage} resizeMode="cover" />
+                      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.forYouPlanOverlay} />
+                      {plan.tag && (
+                        <View style={[styles.forYouPlanTagBadge, { backgroundColor: plan.color }]}>
+                          <Text style={styles.forYouPlanTagBadgeText}>{plan.tag}</Text>
+                        </View>
+                      )}
+                      <View style={styles.forYouPlanBottom}>
+                        <View style={[styles.forYouPlanIconBadge, { backgroundColor: plan.bgColor }]}>
+                          <Icon name={plan.icon as any} size={14} color={plan.color} />
+                        </View>
+                        <Text style={styles.forYouPlanImageName} numberOfLines={1}>{plan.name}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.forYouPlanBody}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={[styles.forYouPlanPrice, { color: plan.color }]}>{'\u20B9'}{plan.pricePerDay}/day</Text>
+                        <View style={[styles.forYouPlanCta, { backgroundColor: plan.color }]}>
+                          <Text style={styles.forYouPlanCtaText}>Subscribe</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.forYouPlanDesc} numberOfLines={2}>{plan.description}</Text>
+                      <View style={styles.forYouPlanBenefits}>
+                        {plan.benefits.slice(0, 2).map((b, i) => (
+                          <View key={i} style={styles.forYouPlanBenefitRow}>
+                            <Icon name="check-circle" size={10} color={plan.color} />
+                            <Text style={styles.forYouPlanBenefitText}>{b}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Recommended Products removed — plans shown above are sufficient */}
+          </>
+        )}
 
         {/* ━━━ 3. RECENTLY ORDERED (conditional) ━━━ */}
         {recentlyOrdered.length > 0 && (
@@ -319,6 +773,75 @@ export default function HomeScreen() {
                 <ProductMiniCard key={`recent_${item.id}`} item={item} themed={themed} />
               ))}
             </ScrollView>
+          </>
+        )}
+
+        {/* ━━━ SMART REORDER ━━━ */}
+        {smartReorder && smartReorder.products.length > 0 && !smartReorder.isRunningLow && (
+          <>
+            <View style={[styles.smartReorderCard, themed.card]}>
+              {/* Header */}
+              <View style={styles.smartReorderHeader}>
+                <View style={[styles.smartReorderIcon, { backgroundColor: smartReorder.isRunningLow ? '#FFF3E0' : '#E8F5E9' }]}>
+                  <Icon name={smartReorder.isRunningLow ? 'clock-alert-outline' : 'refresh-circle'} size={22} color={smartReorder.isRunningLow ? '#E65100' : COLORS.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.smartReorderTitle, themed.textPrimary]}>
+                    {smartReorder.isRunningLow ? 'Your veggies are running low!' : 'Quick Reorder'}
+                  </Text>
+                  <Text style={styles.smartReorderSub}>
+                    {smartReorder.isRunningLow
+                      ? `Last ordered ${smartReorder.daysSince} day${smartReorder.daysSince !== 1 ? 's' : ''} ago — you usually order every ${smartReorder.avgInterval} days`
+                      : `Based on ${smartReorder.totalOrders} order${smartReorder.totalOrders !== 1 ? 's' : ''} — your frequently bought items`}
+                  </Text>
+                </View>
+                {smartReorder.isRunningLow && (
+                  <View style={styles.smartReorderUrgent}>
+                    <Text style={styles.smartReorderUrgentText}>Restock</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Items Scroll */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.smartReorderScroll}>
+                {smartReorder.products.map((item, idx) => (
+                  <TouchableOpacity
+                    key={`sr_${item.id}`}
+                    style={styles.smartReorderItem}
+                    onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
+                    activeOpacity={0.8}
+                  >
+                    <Image source={{ uri: item.image }} style={styles.smartReorderImage} resizeMode="cover" />
+                    <View style={styles.smartReorderFreqBadge}>
+                      <Text style={styles.smartReorderFreqText}>{item.orderCount}x</Text>
+                    </View>
+                    <Text style={[styles.smartReorderItemName, themed.textPrimary]} numberOfLines={1}>{item.name}</Text>
+                    {item.cutType && (
+                      <Text style={styles.smartReorderCut}>{item.cutType.replace('_', ' ')}</Text>
+                    )}
+                    <View style={styles.smartReorderPriceRow}>
+                      <Text style={styles.smartReorderPrice}>{'\u20B9'}{item.price}</Text>
+                      <AddToCartButton item={item} />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Add All to Cart */}
+              <TouchableOpacity
+                style={styles.smartReorderAddAll}
+                onPress={() => {
+                  smartReorder.products.forEach(item => {
+                    addToCart(item as any, 1, undefined, (item as any).cutType);
+                  });
+                  Alert.alert('Added to Cart', `${smartReorder.products.length} items added with your usual preferences!`);
+                }}
+                activeOpacity={0.8}
+              >
+                <Icon name="cart-plus" size={18} color="#FFF" />
+                <Text style={styles.smartReorderAddAllText}>Add All to Cart · {'\u20B9'}{smartReorder.estimatedTotal}</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -337,45 +860,72 @@ export default function HomeScreen() {
         )} */}
 
         {/* ━━━ 4. DISH PACKS (banner + carousel) ━━━ */}
-        <TouchableOpacity style={styles.packsBanner} onPress={() => router.push('/(tabs)/packs')} activeOpacity={0.85}>
-          <LinearGradient colors={COLORS.gradient.green} style={styles.packsGrad}>
-            <View style={styles.packsContent}>
-              <Icon name="food-variant" size={32} color="#FFF" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.packsTitle}>Dish Packs</Text>
-                <Text style={styles.packsDesc}>Pre-cut veggies for Sambar, Biryani, Fish Gravy & more!</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color="#FFF" />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.packsScroll}>
-          {DISH_PACKS.slice(0, 5).map(pack => (
-            <TouchableOpacity
-              key={pack.id}
-              style={[styles.packCard, { backgroundColor: pack.color }]}
-              onPress={() => router.push({ pathname: '/dish-pack-detail', params: { id: pack.id } })}
-              activeOpacity={0.85}
-            >
-              <Image source={{ uri: pack.image }} style={styles.packImage} resizeMode="cover" />
-              <Text style={styles.packName}>{pack.name}</Text>
-              <Text style={styles.packPrice}>{'\u20B9'}{pack.price}</Text>
-              {pack.tag ? (
-                <View style={styles.packTag}><Text style={styles.packTagText}>{pack.tag}</Text></View>
-              ) : <View style={{ height: 8 }} />}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, themed.textPrimary, { marginTop: 0, marginBottom: 0 }]}>Dish Packs</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/packs')}><Text style={styles.viewAllLink}>View All</Text></TouchableOpacity>
+        </View>
+        <View style={styles.zomatoCardList}>
+          {DISH_PACKS.slice(0, 4).map(pack => {
+            const itemCount = pack.items.length;
+            const hasVariants = pack.regionalVariants && pack.regionalVariants.length > 0;
+            return (
+              <TouchableOpacity
+                key={pack.id}
+                style={[styles.zomatoCard, themed.card]}
+                onPress={() => router.push({ pathname: '/dish-pack-detail', params: { id: pack.id } })}
+                activeOpacity={0.9}
+              >
+                <View style={styles.zomatoImageWrap}>
+                  <Image source={{ uri: pack.image }} style={styles.zomatoImage} resizeMode="cover" />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.zomatoImageOverlay} />
+                  {pack.tag && (
+                    <View style={styles.zomatoTagBadge}>
+                      <Text style={styles.zomatoTagText}>{pack.tag}</Text>
+                    </View>
+                  )}
+                  <View style={styles.zomatoDeliveryBadge}>
+                    <Text style={styles.zomatoDeliveryText}>{itemCount} items</Text>
+                  </View>
+                </View>
+                <View style={styles.zomatoBody}>
+                  <View style={styles.zomatoNameRow}>
+                    <Text style={[styles.zomatoName, themed.textPrimary]} numberOfLines={1}>{pack.name}</Text>
+                    <View style={styles.zomatoRatingBadge}>
+                      <Text style={styles.zomatoRatingText}>{'\u20B9'}{pack.price}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.zomatoMeta} numberOfLines={1}>{pack.description}</Text>
+                  <View style={styles.zomatoInfoRow}>
+                    <View style={styles.zomatoInfoChip}>
+                      <Icon name="account-group-outline" size={12} color={COLORS.text.muted} />
+                      <Text style={styles.zomatoInfoText}>{pack.serves}</Text>
+                    </View>
+                    {hasVariants && (
+                      <View style={styles.zomatoInfoChip}>
+                        <Icon name="map-marker-outline" size={12} color={COLORS.text.muted} />
+                        <Text style={styles.zomatoInfoText}>{pack.regionalVariants!.length} styles</Text>
+                      </View>
+                    )}
+                    <View style={styles.zomatoInfoChip}>
+                      <Icon name="content-cut" size={12} color={COLORS.text.muted} />
+                      <Text style={styles.zomatoInfoText}>Choose cut</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {/* ━━━ 6. EXPLORE BY LIFESTYLE (tabbed section) ━━━ */}
         <Text style={[styles.sectionTitle, themed.textPrimary]}>Explore by Lifestyle</Text>
-        <View style={styles.lifestyleTabsRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lifestyleTabsRow}>
           {LIFESTYLE_TABS.map(tab => {
             const isActive = lifestyleTab === tab.key;
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={[styles.lifestyleTab, isActive && { backgroundColor: tab.color }]}
+                style={[styles.lifestyleTab, isActive && { backgroundColor: tab.color, borderColor: 'transparent' }]}
                 onPress={() => setLifestyleTab(tab.key)}
                 activeOpacity={0.8}
               >
@@ -384,27 +934,54 @@ export default function HomeScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-          {lifestyleProducts.map(item => (
-            <TouchableOpacity key={`lifestyle_${item.id}`} style={[styles.miniCard, themed.card]} activeOpacity={0.85}
-              onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}>
-              <Image source={{ uri: item.image }} style={styles.miniImage} resizeMode="cover" />
-              <View style={styles.miniBody}>
-                <Text style={styles.miniName} numberOfLines={1}>{item.name}</Text>
-                <View style={styles.miniPriceRow}>
-                  <Text style={styles.miniPrice}>{'\u20B9'}{item.price}</Text>
-                  <AddToCartButton item={item} />
-                </View>
+        </ScrollView>
+        <View style={styles.zomatoCardList}>
+          {lifestyleProducts.slice(0, 4).map(item => (
+            <TouchableOpacity
+              key={`lifestyle_${item.id}`}
+              style={[styles.zomatoCard, themed.card]}
+              activeOpacity={0.9}
+              onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
+            >
+              <View style={styles.zomatoImageWrap}>
+                <Image source={{ uri: item.image }} style={styles.zomatoImage} resizeMode="cover" />
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.zomatoImageOverlay} />
                 {item.tags && item.tags[0] && (
-                  <View style={[styles.miniTag, { backgroundColor: `${activeLifestyle.color}18` }]}>
-                    <Text style={[styles.miniTagText, { color: activeLifestyle.color }]}>{item.tags[0]}</Text>
+                  <View style={[styles.zomatoTagBadge, { backgroundColor: activeLifestyle.color }]}>
+                    <Text style={styles.zomatoTagText}>{item.tags[0]}</Text>
+                  </View>
+                )}
+                {item.discount && (
+                  <View style={[styles.zomatoOfferBadge]}>
+                    <Icon name="brightness-percent" size={12} color="#FFF" />
+                    <Text style={styles.zomatoOfferText}>{item.discount}</Text>
                   </View>
                 )}
               </View>
+              <View style={styles.zomatoBody}>
+                <View style={styles.zomatoNameRow}>
+                  <Text style={[styles.zomatoName, themed.textPrimary]} numberOfLines={1}>{item.name}</Text>
+                  <View style={[styles.zomatoRatingBadge, { backgroundColor: activeLifestyle.color }]}>
+                    <Text style={styles.zomatoRatingText}>{'\u20B9'}{item.price}</Text>
+                  </View>
+                </View>
+                <View style={styles.zomatoInfoRow}>
+                  <View style={styles.zomatoInfoChip}>
+                    <Icon name="weight" size={12} color={COLORS.text.muted} />
+                    <Text style={styles.zomatoInfoText}>{item.unit}</Text>
+                  </View>
+                  <View style={styles.zomatoInfoChip}>
+                    <Icon name="tag-outline" size={12} color={COLORS.text.muted} />
+                    <Text style={styles.zomatoInfoText}>{item.category}</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 }}>
+                  <AddToCartButton item={item} />
+                </View>
+              </View>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
         <TouchableOpacity
           style={styles.viewAllBtn}
           onPress={() => router.push({ pathname: '/browse', params: { category: activeLifestyle.category } })}
@@ -424,11 +1001,53 @@ export default function HomeScreen() {
             </View>
           </LinearGradient>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-          {seasonalProducts.map(item => (
-            <ProductMiniCard key={`seasonal_${item.id}`} item={item} themed={themed} />
+        <View style={styles.zomatoCardList}>
+          {seasonalProducts.slice(0, 4).map(item => (
+            <TouchableOpacity
+              key={`seasonal_${item.id}`}
+              style={[styles.zomatoCard, themed.card]}
+              activeOpacity={0.9}
+              onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
+            >
+              <View style={styles.zomatoImageWrap}>
+                <Image source={{ uri: item.image }} style={styles.zomatoImage} resizeMode="cover" />
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.zomatoImageOverlay} />
+                {item.tags && item.tags[0] && (
+                  <View style={[styles.zomatoTagBadge, { backgroundColor: '#FF5722' }]}>
+                    <Text style={styles.zomatoTagText}>{item.tags[0]}</Text>
+                  </View>
+                )}
+                {item.discount && (
+                  <View style={styles.zomatoOfferBadge}>
+                    <Icon name="brightness-percent" size={12} color="#FFF" />
+                    <Text style={styles.zomatoOfferText}>{item.discount}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.zomatoBody}>
+                <View style={styles.zomatoNameRow}>
+                  <Text style={[styles.zomatoName, themed.textPrimary]} numberOfLines={1}>{item.name}</Text>
+                  <View style={[styles.zomatoRatingBadge, { backgroundColor: '#FF5722' }]}>
+                    <Text style={styles.zomatoRatingText}>{'\u20B9'}{item.price}</Text>
+                  </View>
+                </View>
+                <View style={styles.zomatoInfoRow}>
+                  <View style={styles.zomatoInfoChip}>
+                    <Icon name="weight" size={12} color={COLORS.text.muted} />
+                    <Text style={styles.zomatoInfoText}>{item.unit}</Text>
+                  </View>
+                  <View style={styles.zomatoInfoChip}>
+                    <Icon name="leaf" size={12} color={COLORS.text.muted} />
+                    <Text style={styles.zomatoInfoText}>{item.category}</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 }}>
+                  <AddToCartButton item={item} />
+                </View>
+              </View>
+            </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         {/* ━━━ 8. FESTIVAL & OCCASION PACKS ━━━ */}
         <Text style={[styles.sectionTitle, themed.textPrimary]}>Festival & Occasion Packs</Text>
@@ -449,37 +1068,42 @@ export default function HomeScreen() {
           <Text style={[styles.sectionTitle, themed.textPrimary, { marginTop: 0, marginBottom: 0 }]}>Popular Items</Text>
           <TouchableOpacity onPress={() => router.push('/browse' as any)}><Text style={styles.viewAllLink}>View All</Text></TouchableOpacity>
         </View>
-        <View style={styles.popularGrid}>
-          {popularProducts.slice(0, 4).map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.productCard, { width: cardW }, themed.card]}
-              activeOpacity={0.85}
-              onPress={() => router.push({ pathname: '/product-detail', params: { id: item.id } })}
-            >
-              <View style={styles.productImageWrap}>
-                <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
-              </View>
-              <View style={styles.productBody}>
-                <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.productUnit}>{item.unit}</Text>
-                <View style={styles.priceAddRow}>
-                  <Text style={styles.productPrice}>{'\u20B9'}{item.price}</Text>
-                  <AddToCartButton item={item} />
-                </View>
-              </View>
-            </TouchableOpacity>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+          {popularProducts.map(item => (
+            <ProductMiniCard key={`pop_${item.id}`} item={item} themed={themed} />
           ))}
-        </View>
+        </ScrollView>
 
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
+
+      {/* ━━━ ASK CHOPIFY FAB ━━━ */}
+      {/* <BounceCard
+        onPress={() => router.push('/recipe-cart' as any)}
+        style={styles.askChopifyFab}
+      >
+        <LinearGradient
+          colors={['#00796B', '#009688']}
+          style={styles.askChopifyFabGrad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={{ position: 'relative' }}>
+            <Icon name="chef-hat" size={24} color="#FFF" />
+            <PulsingDot />
+          </View>
+          <Text style={styles.askChopifyFabText}>Ask Chopify</Text>
+        </LinearGradient>
+      </BounceCard> */}
+
+      {/* ━━━ WELCOME MODAL ━━━ */}
+      {/* <WelcomeModal visible={showWelcome} onClose={() => setShowWelcome(false)} /> */}
     </SafeAreaView>
   );
 }
 
 /* ─── Styles ─── */
-const SECTION_GAP = SPACING.xl;
+const SECTION_GAP = 28;
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
@@ -509,133 +1133,319 @@ const styles = StyleSheet.create({
     ...SHADOW.sm,
   },
 
+  /* Sticky Categories + Filters */
+  stickySection: {
+    backgroundColor: COLORS.background,
+    paddingBottom: 4,
+  },
+  stickyOverlay: {
+    backgroundColor: COLORS.background,
+    zIndex: 50,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+    ...SHADOW.sm,
+  },
+
   /* Scroll */
-  scroll: { paddingBottom: 90 },
+  scroll: { paddingBottom: 100 },
 
   /* Offers Carousel */
   offersSection: { marginTop: SPACING.sm },
   offerCard: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: RADIUS.lg,
-    padding: SPACING.base, minHeight: 110,
+    flexDirection: 'row', alignItems: 'center', borderRadius: RADIUS.xl,
+    padding: SPACING.lg, minHeight: 160, overflow: 'hidden', position: 'relative',
   },
-  offerTitle: { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 4 },
-  offerDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 17 },
+  offerDecor1: { position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: 60, opacity: 0.15 },
+  offerDecor2: { position: 'absolute', bottom: -40, left: -20, width: 100, height: 100, borderRadius: 50, opacity: 0.1 },
+  offerTitle: { fontSize: 26, fontWeight: '900', color: '#FFF', letterSpacing: -0.5 },
+  offerSubtitle: { fontSize: 18, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  offerDesc: { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 17, marginTop: 6 },
   offerBtn: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
-    backgroundColor: '#FFF', borderRadius: RADIUS.full, paddingHorizontal: 14, paddingVertical: 6, gap: 4, marginTop: 10,
+    backgroundColor: '#FFF', borderRadius: RADIUS.full, paddingHorizontal: 18, paddingVertical: 8, gap: 4, marginTop: 12,
+    ...SHADOW.sm,
   },
-  offerBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
-  offerIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
-  offerDots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 8 },
-  offerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.border },
-  offerDotActive: { width: 20, backgroundColor: COLORS.primary },
+  offerBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  offerIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  offerDots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 10 },
+  offerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.15)' },
+  offerDotActive: { width: 24, backgroundColor: COLORS.primary },
 
   /* Quick Access Card */
   quickAccessCard: {
     marginHorizontal: SPACING.base, marginTop: SPACING.lg,
-    borderRadius: RADIUS.lg, backgroundColor: '#FFF',
-    paddingVertical: SPACING.base, paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.xl, backgroundColor: '#FFF',
+    paddingVertical: SPACING.lg, paddingHorizontal: SPACING.sm,
     ...SHADOW.sm,
   },
   quickAccessGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
   },
   quickAccessItem: {
-    width: '25%', alignItems: 'center', paddingVertical: SPACING.sm,
+    width: '25%', alignItems: 'center', paddingVertical: 10,
   },
   quickAccessIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 48, height: 48, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center', marginBottom: 6,
   },
-  quickAccessLabel: { fontSize: 11, fontWeight: '600', color: COLORS.text.primary, textAlign: 'center' },
+  quickAccessLabel: { fontSize: 11, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center' },
 
   /* Section Title */
   sectionTitle: {
-    fontSize: 17, fontWeight: '800', color: COLORS.text.primary,
+    fontSize: 19, fontWeight: '800', color: COLORS.text.primary, letterSpacing: -0.3,
     marginHorizontal: SPACING.base, marginTop: SECTION_GAP, marginBottom: SPACING.sm,
   },
   sectionHeaderRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginHorizontal: SPACING.base, marginTop: SECTION_GAP, marginBottom: SPACING.sm,
   },
-  viewAllLink: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  viewAllLink: { fontSize: 13, fontWeight: '700', color: COLORS.primary, backgroundColor: '#F0FFF0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full, overflow: 'hidden' },
 
   /* Categories */
-  categoryScroll: { paddingHorizontal: SPACING.base, gap: 10, paddingVertical: SPACING.xs },
-  categoryCard: { width: 100, alignItems: 'center', borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
-  categoryImage: { width: 100, height: 70 },
-  categoryLabel: { fontSize: 11, fontWeight: '700', color: COLORS.text.primary, paddingVertical: 8, textAlign: 'center' },
+  categoryScroll: { paddingHorizontal: SPACING.base, gap: 16, paddingVertical: SPACING.sm },
+  categoryCard: { width: 80, alignItems: 'center' },
+  categoryImageWrap: { width: 72, height: 72, borderRadius: 36, overflow: 'hidden', borderWidth: 2.5, borderColor: '#E8F5E9', ...SHADOW.sm },
+  categoryImage: { width: '100%', height: '100%' },
+  categoryLabel: { fontSize: 10, fontWeight: '800', color: COLORS.text.primary, paddingTop: 6, textAlign: 'center' },
 
-  /* Popular Grid */
-  popularGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.base, gap: 10 },
-  productCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, ...SHADOW.sm, overflow: 'hidden' },
-  productImageWrap: { width: '100%', height: 100, overflow: 'hidden' },
-  productImage: { width: '100%', height: '100%' },
-  productBody: { padding: 8 },
-  productName: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary },
-  productUnit: { fontSize: 11, color: COLORS.text.muted, marginBottom: 4 },
-  productPrice: { fontSize: 15, fontWeight: '800', color: COLORS.text.primary },
-  priceAddRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  /* Filter Chips */
+  filterChipsScroll: { paddingHorizontal: SPACING.base, gap: 8, paddingTop: SPACING.xs, paddingBottom: SPACING.sm },
+  filterChipPrimary: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#FFF', borderRadius: RADIUS.full,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1.2, borderColor: '#E0E0E0',
+    ...SHADOW.sm,
+  },
+  filterChipPrimaryText: { fontSize: 12.5, fontWeight: '700', color: COLORS.text.primary },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FFF', borderRadius: RADIUS.full,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: '#EEEEEE',
+  },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text.secondary },
+
+  /* (Popular Items now use ProductMiniCard) */
 
   /* Dish Packs */
-  packsBanner: { marginHorizontal: SPACING.base, marginTop: SECTION_GAP, borderRadius: RADIUS.lg, overflow: 'hidden' },
-  packsGrad: { padding: SPACING.base },
+  packsBanner: { marginHorizontal: SPACING.base, marginTop: SECTION_GAP, borderRadius: RADIUS.xl, overflow: 'hidden', ...SHADOW.md },
+  packsGrad: { padding: SPACING.lg },
   packsContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  packsTitle: { fontSize: 16, fontWeight: '800', color: '#FFF' },
-  packsDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 17, marginTop: 2 },
-  packsScroll: { paddingHorizontal: SPACING.base, gap: 10, paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
-  packCard: { width: 160, borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
-  packImage: { width: 160, height: 100 },
-  packName: { fontSize: 13, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center', paddingHorizontal: 8, marginTop: 8 },
-  packPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginTop: 4 },
-  packTag: { backgroundColor: COLORS.primary, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6, alignSelf: 'center', marginBottom: 10 },
-  packTagText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  packsTitle: { fontSize: 17, fontWeight: '800', color: '#FFF' },
+  packsDesc: { fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 18, marginTop: 2 },
+  packsScroll: { paddingHorizontal: SPACING.base, gap: 12, paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
+  packCard: { width: 170, borderRadius: RADIUS.xl, overflow: 'hidden', ...SHADOW.sm },
+  packImage: { width: 170, height: 115 },
+  packName: { fontSize: 14, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center', paddingHorizontal: 8, marginTop: 8 },
+  packPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginTop: 4, marginBottom: 2 },
+  packTag: { backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6, alignSelf: 'center', marginBottom: 12 },
+  packTagText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+
+  /* Zomato-style Full-width Cards */
+  zomatoCardList: { paddingHorizontal: SPACING.base, gap: 16, marginTop: SPACING.sm },
+  zomatoCard: {
+    backgroundColor: '#FFF', borderRadius: RADIUS.xl, overflow: 'hidden',
+    ...SHADOW.md,
+  },
+  zomatoImageWrap: { width: '100%', height: 200, position: 'relative' },
+  zomatoImage: { width: '100%', height: '100%' },
+  zomatoImageOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+  },
+  zomatoTagBadge: {
+    position: 'absolute', top: 12, left: 12,
+    backgroundColor: COLORS.primary, borderRadius: RADIUS.sm,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  zomatoTagText: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+  zomatoDeliveryBadge: {
+    position: 'absolute', bottom: 12, right: 12,
+    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: RADIUS.sm,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  zomatoDeliveryText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
+  zomatoOfferBadge: {
+    position: 'absolute', bottom: 12, left: 12,
+    backgroundColor: '#1565C0', borderRadius: RADIUS.sm,
+    paddingHorizontal: 8, paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+  },
+  zomatoOfferText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  zomatoBody: { padding: 14 },
+  zomatoNameRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  zomatoName: { fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
+  zomatoRatingBadge: {
+    backgroundColor: COLORS.primary, borderRadius: RADIUS.sm,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  zomatoRatingText: { fontSize: 13, fontWeight: '800', color: '#FFF' },
+  zomatoMeta: { fontSize: 12, color: COLORS.text.muted, marginTop: 4, lineHeight: 17 },
+  zomatoInfoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8,
+  },
+  zomatoInfoChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+  },
+  zomatoInfoText: { fontSize: 11, color: COLORS.text.muted, fontWeight: '600' },
 
   /* Lifestyle Tabs */
   lifestyleTabsRow: {
-    flexDirection: 'row', paddingHorizontal: SPACING.base, gap: 8, marginTop: 6, marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.base, gap: 8, marginTop: 6, marginBottom: SPACING.md,
   },
   lifestyleTab: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 8,
+    paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: RADIUS.full, backgroundColor: '#F5F5F5',
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  lifestyleTabText: { fontSize: 12, fontWeight: '700', color: COLORS.text.secondary },
+  lifestyleTabText: { fontSize: 13, fontWeight: '700', color: COLORS.text.secondary },
   viewAllBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     marginHorizontal: SPACING.base, marginTop: SPACING.sm,
-    paddingVertical: 10, borderRadius: RADIUS.lg,
-    borderWidth: 1, borderColor: COLORS.primary, backgroundColor: '#FFF',
+    paddingVertical: 10, borderRadius: RADIUS.full,
+    borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: '#FFF',
   },
   viewAllBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
 
   /* Section Banner */
-  sectionBanner: { marginHorizontal: SPACING.base, marginTop: SECTION_GAP, borderRadius: RADIUS.lg, overflow: 'hidden' },
-  sectionBannerGrad: { flexDirection: 'row', alignItems: 'center', padding: SPACING.base },
-  sectionBannerTitle: { fontSize: 15, fontWeight: '800', color: '#FFF' },
-  sectionBannerDesc: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  sectionBanner: { marginHorizontal: SPACING.base, marginTop: SECTION_GAP, borderRadius: RADIUS.xl, overflow: 'hidden', ...SHADOW.md },
+  sectionBannerGrad: { flexDirection: 'row', alignItems: 'center', padding: SPACING.lg },
+  sectionBannerTitle: { fontSize: 17, fontWeight: '800', color: '#FFF' },
+  sectionBannerDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
 
   /* Horizontal List */
-  horizontalList: { paddingHorizontal: SPACING.base, gap: 12, paddingTop: SPACING.sm, paddingBottom: SPACING.md },
+  horizontalList: { paddingHorizontal: SPACING.base, gap: 14, paddingTop: SPACING.sm, paddingBottom: SPACING.md },
 
-  /* Mini Card */
-  miniCard: { width: 140, backgroundColor: '#FFF', borderRadius: RADIUS.lg, overflow: 'hidden', ...SHADOW.sm },
-  miniImage: { width: 140, height: 90 },
-  miniBody: { padding: 8 },
-  miniName: { fontSize: 12, fontWeight: '700', color: COLORS.text.primary },
-  miniPrice: { fontSize: 14, fontWeight: '800', color: COLORS.primary, marginTop: 2 },
-  miniPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  /* Mini Card (Zomato-style — no card wrapper, just image + text) */
+  miniCard: { width: 175 },
+  miniImageWrap: { width: 175, height: 150, borderRadius: RADIUS.xl, overflow: 'hidden', position: 'relative', backgroundColor: '#F0F0F0' },
+  miniImage: { width: '100%', height: '100%' },
+  miniOfferBadge: {
+    position: 'absolute', top: 10, left: 0,
+    backgroundColor: 'rgba(33,33,33,0.85)', borderTopRightRadius: RADIUS.sm, borderBottomRightRadius: RADIUS.sm,
+    paddingHorizontal: 8, paddingVertical: 5,
+  },
+  miniOfferText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  miniPriceBadge: {
+    position: 'absolute', bottom: -1, left: 10,
+    backgroundColor: COLORS.primary, borderRadius: RADIUS.sm,
+    paddingHorizontal: 7, paddingVertical: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+  },
+  miniPriceBadgeText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
+  miniName: { fontSize: 15, fontWeight: '800', marginTop: 10, paddingHorizontal: 2 },
+  miniInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 2 },
+  miniUnit: { fontSize: 12, color: COLORS.text.muted },
   miniTag: { backgroundColor: '#E8F5E9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 },
   miniTagText: { fontSize: 9, fontWeight: '700', color: COLORS.green },
 
+  /* Smart Reorder */
+  smartReorderCard: {
+    marginHorizontal: SPACING.base, marginTop: SECTION_GAP,
+    backgroundColor: '#FFF', borderRadius: RADIUS.xl,
+    padding: SPACING.base, ...SHADOW.sm,
+    borderWidth: 1, borderColor: '#E8F5E9',
+  },
+  smartReorderHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  smartReorderIcon: { width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center' },
+  smartReorderTitle: { fontSize: 15, fontWeight: '800' },
+  smartReorderSub: { fontSize: 11, color: COLORS.text.muted, marginTop: 2, lineHeight: 15 },
+  smartReorderUrgent: { backgroundColor: '#FF6F00', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 4 },
+  smartReorderUrgentText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  smartReorderScroll: { gap: 12, paddingTop: SPACING.md, paddingBottom: SPACING.xs },
+  smartReorderItem: { width: 110, alignItems: 'center', position: 'relative' },
+  smartReorderImage: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: '#E8F5E9' },
+  smartReorderFreqBadge: {
+    position: 'absolute', top: 0, right: 4,
+    backgroundColor: COLORS.primary, borderRadius: 10, minWidth: 22, height: 22,
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4,
+  },
+  smartReorderFreqText: { fontSize: 9, fontWeight: '800', color: '#FFF' },
+  smartReorderItemName: { fontSize: 11, fontWeight: '700', marginTop: 6, textAlign: 'center' },
+  smartReorderCut: { fontSize: 9, color: COLORS.text.muted, marginTop: 1, textTransform: 'capitalize' },
+  smartReorderPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  smartReorderPrice: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  smartReorderAddAll: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: COLORS.primary, borderRadius: RADIUS.full,
+    paddingVertical: 14, marginTop: SPACING.md,
+  },
+  smartReorderAddAllText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+
+  /* For You Plan Cards (Zomato-style with image) */
+  forYouPlanCard: {
+    width: 220, backgroundColor: '#FFF', borderRadius: RADIUS.xl,
+    overflow: 'hidden', ...SHADOW.md,
+  },
+  forYouPlanImageWrap: { width: 220, height: 140, position: 'relative' },
+  forYouPlanImage: { width: '100%', height: '100%' },
+  forYouPlanOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 70 },
+  forYouPlanTagBadge: {
+    position: 'absolute', top: 10, left: 0,
+    borderTopRightRadius: RADIUS.sm, borderBottomRightRadius: RADIUS.sm,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  forYouPlanTagBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  forYouPlanBottom: {
+    position: 'absolute', bottom: 10, left: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  forYouPlanIconBadge: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  forYouPlanImageName: { fontSize: 14, fontWeight: '800', color: '#FFF', flex: 1 },
+  forYouPlanBody: { padding: 12 },
+  forYouPlanPrice: { fontSize: 15, fontWeight: '900' },
+  forYouPlanCta: {
+    borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 5,
+  },
+  forYouPlanCtaText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  forYouPlanDesc: { fontSize: 11, color: COLORS.text.muted, marginTop: 6, lineHeight: 15 },
+  forYouPlanBenefits: { marginTop: 8, gap: 4 },
+  forYouPlanBenefitRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  forYouPlanBenefitText: { fontSize: 10, color: COLORS.text.secondary, fontWeight: '600' },
+
+  /* Ask Chopify FAB */
+  askChopifyFab: {
+    position: 'absolute',
+    bottom: 150,
+    right: SPACING.base,
+    borderRadius: RADIUS.full,
+    overflow: 'hidden',
+    elevation: 12,
+    zIndex: 10,
+    shadowColor: '#00796B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  askChopifyFabGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  askChopifyFabText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+
   /* Add / Qty Button */
   addBtn: {
-    backgroundColor: '#E8F5E9', borderRadius: 6, borderWidth: 1, borderColor: COLORS.primary,
-    paddingHorizontal: 10, paddingVertical: 3,
+    backgroundColor: '#FFF', borderRadius: 6, borderWidth: 1.5, borderColor: COLORS.primary,
+    paddingHorizontal: 12, paddingVertical: 4,
+    ...SHADOW.sm,
   },
-  addBtnText: { fontSize: 11, fontWeight: '800', color: COLORS.primary },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', borderRadius: 6, borderWidth: 1, borderColor: COLORS.primary },
-  qtyBtn: { paddingHorizontal: 6, paddingVertical: 3 },
+  addBtnText: { fontSize: 12, fontWeight: '800', color: COLORS.primary },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', borderRadius: 6, borderWidth: 1.5, borderColor: COLORS.primary, ...SHADOW.sm },
+  qtyBtn: { paddingHorizontal: 6, paddingVertical: 4 },
   qtyText: { fontSize: 12, fontWeight: '800', color: COLORS.primary, minWidth: 18, textAlign: 'center' },
 
 });

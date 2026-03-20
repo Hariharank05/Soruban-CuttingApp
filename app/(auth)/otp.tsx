@@ -44,7 +44,7 @@ export default function OTPScreen() {
 
       await login({
         id: Date.now().toString(),
-        name: name?.trim() || 'Customer',
+        name: name?.trim() || '',
         phone: normalizedPhone,
         address: address?.trim() || undefined,
       });

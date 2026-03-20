@@ -281,15 +281,15 @@ export default function CartScreen() {
         )}
 
         {/* ─── Subscribe & Save ─── */}
-        <View style={[styles.subSection, themed.card]}>
+        {/* <View style={[styles.subSection, themed.card]}>
           <View style={styles.subHeaderRow}>
             <Icon name="calendar-sync" size={20} color={COLORS.primary} />
             <Text style={[styles.subTitle, themed.textPrimary]}>Subscribe & Save</Text>
           </View>
-          <Text style={styles.subDesc}>Get regular deliveries with up to 20% off on delivery</Text>
+          <Text style={styles.subDesc}>Get regular deliveries with up to 20% off on delivery</Text> */}
 
           {/* Order type toggle */}
-          <View style={styles.orderTypeRow}>
+          {/* <View style={styles.orderTypeRow}>
             <TouchableOpacity style={[styles.orderTypeBtn, orderType === 'once' && styles.orderTypeBtnActive]} onPress={() => setOrderType('once')}>
               <Icon name="cart-outline" size={16} color={orderType === 'once' ? '#FFF' : COLORS.text.secondary} />
               <Text style={[styles.orderTypeBtnText, orderType === 'once' && styles.orderTypeBtnTextActive]}>One-time</Text>
@@ -301,9 +301,9 @@ export default function CartScreen() {
           </View>
 
           {orderType === 'subscribe' && (
-            <>
+            <> */}
               {/* Frequency selector */}
-              <Text style={styles.subLabel}>Delivery Frequency</Text>
+              {/* <Text style={styles.subLabel}>Delivery Frequency</Text>
               <View style={styles.freqRow}>
                 {(['daily', 'weekly', 'monthly'] as SubFrequency[]).map(freq => (
                   <TouchableOpacity key={freq} style={[styles.freqPill, subFrequency === freq && styles.freqPillActive]} onPress={() => setSubFrequency(freq)}>
@@ -315,10 +315,10 @@ export default function CartScreen() {
                     </View>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </View> */}
 
               {/* Weekly: day selector + auto-repeat */}
-              {subFrequency === 'weekly' && (
+              {/* {subFrequency === 'weekly' && (
                 <View style={styles.weekSection}>
                   <Text style={styles.subLabel}>Delivery Day</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekDayRow}>
@@ -342,10 +342,10 @@ export default function CartScreen() {
                     />
                   </View>
                 </View>
-              )}
+              )} */}
 
               {/* Monthly: date chips */}
-              {subFrequency === 'monthly' && (
+              {/* {subFrequency === 'monthly' && (
                 <View style={styles.monthSection}>
                   <Text style={styles.subLabel}>Delivery Dates (select one or more)</Text>
                   <View style={styles.monthDateRow}>
@@ -361,10 +361,10 @@ export default function CartScreen() {
                     })}
                   </View>
                 </View>
-              )}
+              )} */}
 
               {/* Mini Calendar */}
-              <Text style={[styles.subLabel, { marginTop: SPACING.md }]}>
+              {/* <Text style={[styles.subLabel, { marginTop: SPACING.md }]}>
                 {subFrequency === 'daily' ? 'Start Date' : 'Select Delivery Dates'}
               </Text>
               <View style={styles.calendarCard}>
@@ -405,10 +405,10 @@ export default function CartScreen() {
                 {selectedDates.size > 0 && (
                   <Text style={styles.calSelectedCount}>{selectedDates.size} date{selectedDates.size > 1 ? 's' : ''} selected</Text>
                 )}
-              </View>
+              </View> */}
 
               {/* Subscription savings summary */}
-              <View style={styles.subSavingsCard}>
+              {/* <View style={styles.subSavingsCard}>
                 <Icon name="tag-outline" size={16} color={COLORS.green} />
                 <Text style={styles.subSavingsText}>
                   You save {'\u20B9'}{Math.round(deliveryFee * SUB_DISCOUNTS[subFrequency] / 100)}/delivery with {subFrequency} subscription ({SUB_DISCOUNTS[subFrequency]}% off delivery)
@@ -416,7 +416,7 @@ export default function CartScreen() {
               </View>
             </>
           )}
-        </View>
+        </View> */}
 
         <View style={[styles.couponSection, themed.card]}>
           <Text style={[styles.couponTitle, themed.textPrimary]}>Apply Coupon</Text>
@@ -488,7 +488,7 @@ export default function CartScreen() {
           }
           router.push({ pathname: '/checkout', params });
         }}>
-          <Text style={styles.checkoutBtnText}>{orderType === 'subscribe' ? 'Subscribe & Checkout' : 'Proceed to Checkout'}</Text>
+          <Text style={styles.checkoutBtnText}>{orderType === 'subscribe' ? 'Proceed Checkout' : 'Proceed to Checkout'}</Text>
           <Icon name="chevron-right" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>

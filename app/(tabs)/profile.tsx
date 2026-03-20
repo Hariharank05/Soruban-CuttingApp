@@ -32,16 +32,19 @@ export default function ProfileScreen() {
   const activeSubscriptions = orders.filter(o => o.subscription && (o.subscription.status === 'active' || o.subscription.status === 'paused'));
   const themed = useThemedStyles();
   const { loyalty } = useLoyalty();
-  const { familyMembers } = useDiet();
+  const { familyMembers, resetProfile, userName } = useDiet();
 
   const EXTRA_MENU_ITEMS = [
     { icon: 'star-circle', label: 'Loyalty Rewards', desc: `${loyalty.currentBalance} points`, route: '/loyalty', color: '#FFD700' },
     { icon: 'gift-outline', label: 'Refer & Earn', desc: 'Earn ₹50 per referral', route: '/referral', color: '#E91E63' },
     { icon: 'chart-line', label: 'Spending Analytics', desc: 'Track your expenses', route: '/spending-analytics', color: '#2196F3' },
     { icon: 'food-variant', label: 'Diet & Health', desc: familyMembers.length > 0 ? `${familyMembers.length} family members` : 'Set preferences', route: '/diet-preferences', color: '#4CAF50' },
+    { icon: 'doctor', label: 'Nutritionist', desc: 'Chat, Meal Plan & Health Report', route: '/nutritionist', color: '#1565C0' },
     { icon: 'content-save-outline', label: 'Saved Carts', desc: 'Your saved orders', route: '/saved-carts', color: '#FF9800' },
     { icon: 'book-open-variant', label: 'Community Recipes', desc: 'Discover recipes', route: '/community-recipes', color: '#7B1FA2' },
     { icon: 'ticket-percent', label: 'Offers & Coupons', desc: 'Available discounts', route: '/offers-coupons', color: '#E65100' },
+    { icon: 'account-group', label: 'Group Subscription', desc: 'Hostel group — share & save', route: '/group-subscription', color: '#1565C0' },
+    { icon: 'domain', label: 'Corporate Plans', desc: 'Office fruit baskets & wellness', route: '/corporate-subscription', color: '#1A237E' },
     { icon: 'airplane', label: 'Vacation Mode', desc: 'Pause deliveries', route: '/vacation-mode', color: '#607D8B' },
   ];
 
@@ -60,7 +63,7 @@ export default function ProfileScreen() {
             <View style={styles.avatarCircle}><Icon name="account" size={40} color={COLORS.primary} /></View>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={[styles.profileName, themed.textPrimary]}>{user?.name || 'Customer'}</Text>
+            <Text style={[styles.profileName, themed.textPrimary]}>{userName || user?.name || 'Customer'}</Text>
             <View style={styles.tierBadge}>
               <Icon name="shield-star" size={14} color={loyalty.tier === 'gold' ? '#FFD700' : loyalty.tier === 'silver' ? '#C0C0C0' : loyalty.tier === 'platinum' ? '#E5E4E2' : '#CD7F32'} />
               <Text style={styles.tierText}>{loyalty.tier.charAt(0).toUpperCase() + loyalty.tier.slice(1)}</Text>
@@ -203,7 +206,7 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await resetProfile(); await logout(); }}>
           <Icon name="logout" size={18} color={COLORS.status.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>

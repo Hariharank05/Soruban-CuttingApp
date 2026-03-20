@@ -127,9 +127,11 @@ export default function SubscriptionManageScreen() {
 
   const freqLabel = sub.frequency.charAt(0).toUpperCase() + sub.frequency.slice(1);
   const scheduleDetail = sub.frequency === 'weekly'
-    ? `Every ${sub.weeklyDay}`
+    ? sub.weeklyDay ? `Every ${sub.weeklyDay}` : `${activeCount} days per week`
     : sub.frequency === 'monthly'
-    ? `On ${sub.monthlyDates?.join(', ')} of each month`
+    ? sub.monthlyDates && sub.monthlyDates.length > 0
+      ? `${sub.monthlyDates.length} dates each month`
+      : 'Weekdays each month'
     : 'Every day';
 
   return (
@@ -208,8 +210,8 @@ export default function SubscriptionManageScreen() {
           </View>
         )}
 
-        {/* Weekly Plan Overview */}
-        {sub.weeklyPlan && (
+        {/* Plan Overview — adapts to frequency */}
+        {sub.weeklyPlan && sub.frequency === 'weekly' && (
           <View style={[styles.sectionCard, themed.card]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, themed.textPrimary]}>Weekly Plan</Text>
@@ -244,7 +246,85 @@ export default function SubscriptionManageScreen() {
           </View>
         )}
 
-        {!sub.weeklyPlan && (
+        {/* Monthly Plan Overview */}
+        {sub.frequency === 'monthly' && (
+          <View style={[styles.sectionCard, themed.card]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, themed.textPrimary]}>Monthly Plan</Text>
+              <TouchableOpacity
+                style={styles.editPlanBtn}
+                onPress={() => router.push({ pathname: '/subscription-calendar', params: { orderId: id } } as any)}
+              >
+                <Icon name="pencil" size={14} color="#FFF" />
+                <Text style={styles.editPlanBtnText}>Edit Dates</Text>
+              </TouchableOpacity>
+            </View>
+            {sub.monthlyDates && sub.monthlyDates.length > 0 ? (
+              <View>
+                <Text style={[styles.planItemsList, { marginBottom: 8 }]}>
+                  Delivery on {sub.monthlyDates.length} dates every month
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                  {sub.monthlyDates.map(date => {
+                    const d = new Date();
+                    d.setDate(date);
+                    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+                    return (
+                      <View key={date} style={{ alignItems: 'center', backgroundColor: '#E8F5E9', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 48 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.primary }}>{date}</Text>
+                        <Text style={{ fontSize: 9, fontWeight: '600', color: COLORS.text.muted, marginTop: 1 }}>{dayName}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text.primary, marginBottom: 4 }}>Items per delivery</Text>
+                  {order.items.map((item, i) => (
+                    <Text key={`${item.id}-${i}`} style={styles.planItemsList}>
+                      {item.name} x{item.quantity}{item.cutType ? ` (${item.cutType.replace('_', ' ')})` : ''}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.planItemsList}>
+                  {order.items.length} items delivered on weekdays each month
+                </Text>
+                {order.items.map((item, i) => (
+                  <Text key={`${item.id}-${i}`} style={[styles.planItemsList, { marginTop: 2 }]}>
+                    {item.name} x{item.quantity}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Daily Plan Overview */}
+        {sub.frequency === 'daily' && (
+          <View style={[styles.sectionCard, themed.card]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, themed.textPrimary]}>Daily Plan</Text>
+              <TouchableOpacity
+                style={styles.editPlanBtn}
+                onPress={() => router.push({ pathname: '/subscription-plan-editor', params: { id } } as any)}
+              >
+                <Icon name="pencil" size={14} color="#FFF" />
+                <Text style={styles.editPlanBtnText}>Edit Plan</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.planItemsList}>Same items delivered every day</Text>
+            {order.items.map((item, i) => (
+              <Text key={`${item.id}-${i}`} style={[styles.planItemsList, { marginTop: 2 }]}>
+                {item.name} x{item.quantity}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {/* Setup Plan button — only if no plan exists for weekly */}
+        {!sub.weeklyPlan && sub.frequency === 'weekly' && (
           <TouchableOpacity
             style={[styles.setupPlanBtn, themed.card]}
             onPress={() => router.push({ pathname: '/subscription-plan-editor', params: { id } } as any)}

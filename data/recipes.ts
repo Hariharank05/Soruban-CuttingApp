@@ -28,7 +28,7 @@ export const COMMUNITY_RECIPES: CommunityRecipe[] = [
   {
     id: 'recipe_4', title: 'Fresh Fruit Salad Bowl',
     description: 'A refreshing mix of seasonal fruits with honey and lime dressing.',
-    image: 'https://images.unsplash.com/photo-1564093497595-593b96d80571?auto=format&fit=crop&w=400&q=80',
+    image: 'https://plus.unsplash.com/premium_photo-1664478279991-832059d65835?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZnJ1aXQlMjBzYWxhZHxlbnwwfHwwfHx8MA%3D%3D',
     authorName: 'Meena Shah', ingredients: ['Apple', 'Banana', 'Orange', 'Pomegranate', 'Honey', 'Lime Juice', 'Mint'],
     steps: ['Wash and cut all fruits', 'Mix honey with lime juice', 'Toss fruits in dressing', 'Garnish with mint', 'Chill and serve'],
     servings: 2, cookTime: '10 min', likes: 312, packId: 'pack_fruit_salad', date: '2026-03-05',
@@ -44,7 +44,7 @@ export const COMMUNITY_RECIPES: CommunityRecipe[] = [
   {
     id: 'recipe_6', title: 'Beetroot Juice Boost',
     description: 'Energy-boosting fresh juice with beetroot, carrot, and ginger.',
-    image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1506802913710-40e2e66339c9?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YmVldHJvb3QlMjBqdWljZXxlbnwwfHwwfHx8MA%3D%3D',
     authorName: 'Kavitha Raman', ingredients: ['Beetroot', 'Carrot', 'Apple', 'Ginger', 'Lemon'],
     steps: ['Wash and peel vegetables', 'Cut into chunks', 'Blend with water', 'Strain if desired', 'Add lemon juice'],
     servings: 2, cookTime: '5 min', likes: 267, packId: 'pack_fruit_juice', date: '2026-03-08',

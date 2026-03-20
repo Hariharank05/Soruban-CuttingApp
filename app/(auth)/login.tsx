@@ -24,11 +24,9 @@ export default function LoginScreen() {
 
   const demoLogin = () => {
     login({
-      id: '1',
-      name: 'Ravi Kumar',
+      id: Date.now().toString(),
+      name: '',
       phone: '9876543210',
-      email: 'ravi@example.com',
-      address: '42, Anna Nagar, Coimbatore',
     });
   };
 

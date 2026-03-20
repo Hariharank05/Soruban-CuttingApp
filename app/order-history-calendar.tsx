@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useOrders } from '@/context/OrderContext';
+import type { WeekDay } from '@/types';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
@@ -19,6 +20,15 @@ function toDateStr(year: number, month: number, day: number): string {
 }
 
 type DayStatus = 'delivered' | 'cancelled' | 'in_progress' | 'none';
+
+type SubDeliveryInfo = {
+  orderId: string;
+  frequency: string;
+  label: string;
+  isSkipped: boolean;
+  items: { name: string; quantity: number }[];
+  total: number;
+};
 
 export default function OrderHistoryCalendarScreen() {
   const router = useRouter();
@@ -34,33 +44,155 @@ export default function OrderHistoryCalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+
+  // Get subscription orders
+  const subscriptionOrders = useMemo(() =>
+    orders.filter(o => o.subscription && o.subscription.status !== 'cancelled')
+  , [orders]);
+
+  const regularOrders = useMemo(() =>
+    orders.filter(o => !o.subscription || o.subscription.status === 'cancelled')
+  , [orders]);
+
+  // Filter tabs
+  const filterTabs = useMemo(() => {
+    const tabs: { key: string; label: string; icon: string; color: string }[] = [
+      { key: 'all', label: 'All', icon: 'view-grid', color: COLORS.primary },
+    ];
+    if (regularOrders.length > 0) {
+      tabs.push({ key: 'orders', label: 'Orders', icon: 'package-variant', color: '#1565C0' });
+    }
+    subscriptionOrders.forEach(o => {
+      const sub = o.subscription!;
+      const freqLabel = sub.frequency.charAt(0).toUpperCase() + sub.frequency.slice(1);
+      tabs.push({
+        key: o.id,
+        label: `${freqLabel} Sub`,
+        icon: sub.frequency === 'daily' ? 'calendar-today' : sub.frequency === 'weekly' ? 'calendar-week' : 'calendar-month',
+        color: sub.frequency === 'daily' ? '#F57C00' : sub.frequency === 'weekly' ? COLORS.primary : '#7B1FA2',
+      });
+    });
+    return tabs;
+  }, [subscriptionOrders, regularOrders]);
+
+  // Build subscription delivery map for current month
+  const subDeliveryMap = useMemo(() => {
+    const map = new Map<string, SubDeliveryInfo[]>();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    subscriptionOrders.forEach(order => {
+      const sub = order.subscription!;
+      if (activeFilter !== 'all' && activeFilter !== order.id) return;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(currentYear, currentMonth, day);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const dateStr = toDateStr(currentYear, currentMonth, day);
+
+        let isDelivery = false;
+        if (sub.frequency === 'daily') {
+          isDelivery = true;
+        } else if (sub.frequency === 'weekly') {
+          const wd = dayName as WeekDay;
+          if (sub.weeklyPlan) {
+            const dp = sub.weeklyPlan[wd];
+            isDelivery = !!(dp && dp.isActive && dp.items.length > 0);
+          } else if (sub.weeklyDay) {
+            isDelivery = dayName === sub.weeklyDay;
+          } else {
+            isDelivery = dayName !== 'Sun';
+          }
+        } else if (sub.frequency === 'monthly') {
+          if (sub.monthlyDates && sub.monthlyDates.length > 0) {
+            isDelivery = sub.monthlyDates.includes(day);
+          } else {
+            isDelivery = dayName !== 'Sun';
+          }
+        }
+
+        if (isDelivery) {
+          const isSkipped = (sub.skippedDeliveries || []).some(s => s.date === dateStr && s.status === 'skipped');
+          const freqLabel = sub.frequency.charAt(0).toUpperCase() + sub.frequency.slice(1);
+          const info: SubDeliveryInfo = {
+            orderId: order.id,
+            frequency: sub.frequency,
+            label: `${freqLabel} Subscription`,
+            isSkipped,
+            items: order.items.map(i => ({ name: i.name, quantity: i.quantity })),
+            total: order.total,
+          };
+          if (!map.has(dateStr)) map.set(dateStr, []);
+          map.get(dateStr)!.push(info);
+        }
+      }
+    });
+    return map;
+  }, [subscriptionOrders, currentMonth, currentYear, activeFilter]);
 
   // Build a map of date -> order statuses for the current month
   const orderMap = useMemo(() => {
-    const map = new Map<string, { status: DayStatus; orders: typeof orders }>();
+    const map = new Map<string, { status: DayStatus; orders: typeof orders; subDeliveries: SubDeliveryInfo[] }>();
 
-    orders.forEach(order => {
-      const created = new Date(order.createdAt);
-      const dateStr = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`;
-
+    // Add subscription deliveries first
+    subDeliveryMap.forEach((deliveries, dateStr) => {
       if (!map.has(dateStr)) {
-        map.set(dateStr, { status: 'none', orders: [] });
-      }
-      const entry = map.get(dateStr)!;
-      entry.orders.push(order);
-
-      // Determine the best status for the day
-      if (order.status === 'delivered') {
-        entry.status = 'delivered';
-      } else if (order.status === 'cancelled') {
-        if (entry.status !== 'delivered') entry.status = 'cancelled';
+        map.set(dateStr, { status: 'none', orders: [], subDeliveries: deliveries });
       } else {
-        if (entry.status !== 'delivered' && entry.status !== 'cancelled') entry.status = 'in_progress';
+        map.get(dateStr)!.subDeliveries = deliveries;
+      }
+      // Mark as in_progress for future, delivered for past
+      const d = new Date(dateStr + 'T00:00:00');
+      const entry = map.get(dateStr)!;
+      const allSkipped = deliveries.every(del => del.isSkipped);
+      if (allSkipped) {
+        if (entry.status === 'none') entry.status = 'cancelled';
+      } else if (d < today) {
+        if (entry.status === 'none') entry.status = 'delivered';
+      } else {
+        if (entry.status === 'none') entry.status = 'in_progress';
       }
     });
 
+    // Add regular orders
+    if (activeFilter === 'all' || activeFilter === 'orders') {
+      regularOrders.forEach(order => {
+        const created = new Date(order.createdAt);
+        const dateStr = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`;
+
+        if (!map.has(dateStr)) {
+          map.set(dateStr, { status: 'none', orders: [], subDeliveries: [] });
+        }
+        const entry = map.get(dateStr)!;
+        entry.orders.push(order);
+
+        if (order.status === 'delivered') {
+          entry.status = 'delivered';
+        } else if (order.status === 'cancelled') {
+          if (entry.status !== 'delivered') entry.status = 'cancelled';
+        } else {
+          if (entry.status !== 'delivered' && entry.status !== 'cancelled') entry.status = 'in_progress';
+        }
+      });
+    }
+
+    // If filtering by a specific subscription, only show that sub's data
+    if (activeFilter !== 'all' && activeFilter !== 'orders') {
+      const filtered = new Map<string, { status: DayStatus; orders: typeof orders; subDeliveries: SubDeliveryInfo[] }>();
+      subDeliveryMap.forEach((deliveries, dateStr) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        const allSkipped = deliveries.every(del => del.isSkipped);
+        filtered.set(dateStr, {
+          status: allSkipped ? 'cancelled' : d < today ? 'delivered' : 'in_progress',
+          orders: [],
+          subDeliveries: deliveries,
+        });
+      });
+      return filtered;
+    }
+
     return map;
-  }, [orders]);
+  }, [orders, regularOrders, subDeliveryMap, activeFilter, today]);
 
   // Calendar grid
   const calendarGrid = useMemo(() => {
@@ -86,6 +218,7 @@ export default function OrderHistoryCalendarScreen() {
     let delivered = 0;
     let cancelled = 0;
     let inProgress = 0;
+    let skipped = 0;
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -96,9 +229,13 @@ export default function OrderHistoryCalendarScreen() {
         else if (entry.status === 'cancelled') cancelled++;
         else if (entry.status === 'in_progress') inProgress++;
       }
+      const subDels = subDeliveryMap.get(dateStr);
+      if (subDels) {
+        skipped += subDels.filter(d => d.isSkipped).length;
+      }
     }
-    return { delivered, cancelled, inProgress, total: delivered + cancelled + inProgress };
-  }, [orderMap, currentMonth, currentYear]);
+    return { delivered, cancelled, inProgress, skipped, total: delivered + cancelled + inProgress };
+  }, [orderMap, subDeliveryMap, currentMonth, currentYear]);
 
   // Selected day details
   const selectedDetail = useMemo(() => {
@@ -164,6 +301,26 @@ export default function OrderHistoryCalendarScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Subscription Filter Tabs */}
+        {filterTabs.length > 2 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContainer}>
+            {filterTabs.map(tab => {
+              const isActive = activeFilter === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.filterTab, isActive && { backgroundColor: tab.color, borderColor: tab.color }]}
+                  onPress={() => { setActiveFilter(tab.key); setSelectedDay(null); }}
+                  activeOpacity={0.8}
+                >
+                  <Icon name={tab.icon as any} size={14} color={isActive ? '#FFF' : tab.color} />
+                  <Text style={[styles.filterTabText, isActive && { color: '#FFF' }]}>{tab.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
         {/* Calendar Grid */}
         <View style={[styles.calendarCard, themed.card, SHADOW.md]}>
           <View style={styles.dayHeaderRow}>
@@ -198,15 +355,31 @@ export default function OrderHistoryCalendarScreen() {
                     ]}>
                       {day}
                     </Text>
-                    {cellInfo.status === 'delivered' && (
-                      <Icon name="check-circle" size={12} color={COLORS.status.success} style={{ marginTop: 1 }} />
-                    )}
-                    {cellInfo.status === 'cancelled' && (
-                      <Icon name="close-circle" size={12} color={COLORS.status.error} style={{ marginTop: 1 }} />
-                    )}
-                    {cellInfo.status === 'in_progress' && (
-                      <Icon name="clock-outline" size={12} color={COLORS.status.info} style={{ marginTop: 1 }} />
-                    )}
+                    {(() => {
+                      const dateStr = toDateStr(currentYear, currentMonth, day);
+                      const subDels = subDeliveryMap.get(dateStr);
+                      if (subDels && subDels.length > 0) {
+                        // Show colored dots for each subscription
+                        return (
+                          <View style={{ flexDirection: 'row', gap: 2, marginTop: 1 }}>
+                            {subDels.map((del, i) => (
+                              <View key={i} style={{
+                                width: 5, height: 5, borderRadius: 3,
+                                backgroundColor: del.isSkipped ? COLORS.status.error
+                                  : del.frequency === 'daily' ? '#F57C00'
+                                  : del.frequency === 'weekly' ? COLORS.primary
+                                  : '#7B1FA2',
+                              }} />
+                            ))}
+                          </View>
+                        );
+                      }
+                      // Regular order icons
+                      if (cellInfo.status === 'delivered') return <Icon name="check-circle" size={12} color={COLORS.status.success} style={{ marginTop: 1 }} />;
+                      if (cellInfo.status === 'cancelled') return <Icon name="close-circle" size={12} color={COLORS.status.error} style={{ marginTop: 1 }} />;
+                      if (cellInfo.status === 'in_progress') return <Icon name="clock-outline" size={12} color={COLORS.status.info} style={{ marginTop: 1 }} />;
+                      return null;
+                    })()}
                   </TouchableOpacity>
                 );
               })}
@@ -223,13 +396,29 @@ export default function OrderHistoryCalendarScreen() {
             </View>
             <View style={styles.legendItem}>
               <Icon name="close-circle" size={14} color={COLORS.status.error} />
-              <Text style={[styles.legendText, themed.textSecondary]}>Cancelled</Text>
+              <Text style={[styles.legendText, themed.textSecondary]}>Cancelled/Skipped</Text>
             </View>
             <View style={styles.legendItem}>
               <Icon name="clock-outline" size={14} color={COLORS.status.info} />
-              <Text style={[styles.legendText, themed.textSecondary]}>In Progress</Text>
+              <Text style={[styles.legendText, themed.textSecondary]}>Scheduled</Text>
             </View>
           </View>
+          {subscriptionOrders.length > 0 && (
+            <View style={[styles.legendRow, { marginTop: 6 }]}>
+              <View style={styles.legendItem}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary }} />
+                <Text style={[styles.legendText, themed.textSecondary]}>Weekly</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#7B1FA2' }} />
+                <Text style={[styles.legendText, themed.textSecondary]}>Monthly</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F57C00' }} />
+                <Text style={[styles.legendText, themed.textSecondary]}>Daily</Text>
+              </View>
+            </View>
+          )}
           <View style={[styles.legendRow, { marginTop: 6 }]}>
             <View style={styles.legendItem}>
               <View style={styles.todayCellLegend} />
@@ -258,8 +447,47 @@ export default function OrderHistoryCalendarScreen() {
               </View>
             </View>
 
-            {selectedDetail.entry && selectedDetail.entry.orders.length > 0 ? (
+            {(selectedDetail.entry && (selectedDetail.entry.orders.length > 0 || selectedDetail.entry.subDeliveries.length > 0)) ? (
               <View style={styles.detailBody}>
+                {/* Subscription Deliveries */}
+                {selectedDetail.entry.subDeliveries.map((del, idx) => (
+                  <TouchableOpacity
+                    key={`sub-${del.orderId}-${idx}`}
+                    style={styles.orderRow}
+                    activeOpacity={0.8}
+                    onPress={() => router.push({ pathname: '/subscription-manage' as any, params: { id: del.orderId } })}
+                  >
+                    <View style={[styles.orderStatusDot, { backgroundColor: del.isSkipped ? COLORS.status.error : del.frequency === 'daily' ? '#F57C00' : del.frequency === 'weekly' ? COLORS.primary : '#7B1FA2' }]} />
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.orderRowId, themed.textPrimary]}>{del.label}</Text>
+                        <View style={[styles.subTypeBadge, { backgroundColor: del.frequency === 'daily' ? '#FFF3E0' : del.frequency === 'weekly' ? '#E8F5E9' : '#F3E5F5' }]}>
+                          <Text style={[styles.subTypeBadgeText, { color: del.frequency === 'daily' ? '#F57C00' : del.frequency === 'weekly' ? COLORS.primary : '#7B1FA2' }]}>
+                            {del.frequency}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.orderRowMeta}>
+                        {del.items.length} items · {'\u20B9'}{del.total}
+                        {del.isSkipped ? '' : ` · ${del.items.slice(0, 2).map(i => i.name).join(', ')}${del.items.length > 2 ? '...' : ''}`}
+                      </Text>
+                    </View>
+                    {del.isSkipped ? (
+                      <View style={[styles.orderStatusBadge, { backgroundColor: '#FFEBEE' }]}>
+                        <Text style={[styles.orderStatusText, { color: COLORS.status.error }]}>Skipped</Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.orderStatusBadge, { backgroundColor: new Date(selectedDetail.dateStr + 'T00:00:00') < today ? '#E8F5E9' : '#E3F2FD' }]}>
+                        <Text style={[styles.orderStatusText, { color: new Date(selectedDetail.dateStr + 'T00:00:00') < today ? COLORS.status.success : COLORS.status.info }]}>
+                          {new Date(selectedDetail.dateStr + 'T00:00:00') < today ? 'Delivered' : 'Scheduled'}
+                        </Text>
+                      </View>
+                    )}
+                    <Icon name="chevron-right" size={16} color={COLORS.text.muted} />
+                  </TouchableOpacity>
+                ))}
+
+                {/* Regular Orders */}
                 {selectedDetail.entry.orders.map(order => {
                   const time = new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
                   const statusColor = STATUS_COLORS[order.status === 'delivered' ? 'delivered' : order.status === 'cancelled' ? 'cancelled' : 'in_progress'];
@@ -347,6 +575,12 @@ const styles = StyleSheet.create({
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: SPACING.base, marginTop: SPACING.md, paddingVertical: SPACING.md, paddingHorizontal: SPACING.base, borderRadius: RADIUS.lg, borderWidth: 1 },
   monthArrow: { width: 36, height: 36, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center' },
   monthLabel: { fontSize: 18, fontWeight: '700' },
+  filterScroll: { marginTop: SPACING.md, marginBottom: -SPACING.sm },
+  filterContainer: { paddingHorizontal: SPACING.base, gap: 8 },
+  filterTab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: COLORS.border },
+  filterTabText: { fontSize: 11, fontWeight: '700', color: COLORS.text.secondary },
+  subTypeBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
+  subTypeBadgeText: { fontSize: 8, fontWeight: '800', textTransform: 'capitalize' },
   calendarCard: { marginHorizontal: SPACING.base, marginTop: SPACING.md, borderRadius: RADIUS.lg, padding: SPACING.sm, overflow: 'hidden' },
   dayHeaderRow: { flexDirection: 'row', marginBottom: SPACING.xs },
   dayHeaderCell: { flex: 1, alignItems: 'center', paddingVertical: SPACING.sm },

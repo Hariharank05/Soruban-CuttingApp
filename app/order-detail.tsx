@@ -272,6 +272,88 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
+        {/* ━━━ Meal Prep Timer — only for delivered orders ━━━ */}
+        {order.status === 'delivered' && (() => {
+          const deliveredDate = new Date(order.createdAt);
+          const now = new Date();
+          const daysSince = Math.floor((now.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
+          const FRESHNESS: Record<string, { days: number; tip: string; icon: string }> = {
+            'Vegetables': { days: 3, tip: 'Store in fridge in airtight container', icon: 'leaf' },
+            'Fruits': { days: 4, tip: 'Keep at room temp, refrigerate once ripe', icon: 'fruit-cherries' },
+            'Healthy Snacks': { days: 5, tip: 'Store in cool, dry place', icon: 'food-apple' },
+            'Diet Foods': { days: 3, tip: 'Consume within 3 days for best nutrition', icon: 'heart-pulse' },
+            'Sports Nutrition': { days: 3, tip: 'Best consumed fresh for maximum protein', icon: 'dumbbell' },
+          };
+          const productsDb = require('@/data/products.json') as any[];
+          const itemFreshness = order.items.map(item => {
+            const product = productsDb.find((p: any) => p.id === item.id);
+            const category = product?.category || 'Vegetables';
+            const info = FRESHNESS[category] || FRESHNESS['Vegetables'];
+            const daysLeft = Math.max(0, info.days - daysSince);
+            const pct = Math.max(0, Math.min(100, (daysLeft / info.days) * 100));
+            return { ...item, category, daysLeft, totalDays: info.days, tip: info.tip, icon: info.icon, pct };
+          });
+          const urgentItems = itemFreshness.filter(i => i.daysLeft <= 1);
+          const freshItems = itemFreshness.filter(i => i.daysLeft > 1);
+
+          return (
+            <View style={[styles.freshCard, themed.card]}>
+              <View style={styles.freshHeader}>
+                <View style={styles.freshHeaderIcon}>
+                  <Icon name="clock-alert-outline" size={18} color="#FFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.freshTitle, themed.textPrimary]}>Freshness Tracker</Text>
+                  <Text style={styles.freshSub}>Use your veggies before they lose nutrition</Text>
+                </View>
+              </View>
+
+              {/* Urgent Items */}
+              {urgentItems.length > 0 && (
+                <View style={styles.freshUrgent}>
+                  <Icon name="alert-circle" size={14} color="#E53935" />
+                  <Text style={styles.freshUrgentText}>Use today: {urgentItems.map(i => i.name).join(', ')}</Text>
+                </View>
+              )}
+
+              {/* Item List */}
+              {itemFreshness.slice(0, 5).map((item, idx) => (
+                <View key={idx} style={styles.freshItemRow}>
+                  <Icon name={item.icon as any} size={16} color={item.daysLeft <= 1 ? '#E53935' : item.daysLeft <= 2 ? '#F57C00' : '#43A047'} />
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={[styles.freshItemName, themed.textPrimary]}>{item.name}</Text>
+                      <Text style={[styles.freshItemDays, {
+                        color: item.daysLeft <= 1 ? '#E53935' : item.daysLeft <= 2 ? '#F57C00' : '#43A047'
+                      }]}>
+                        {item.daysLeft === 0 ? 'Use now!' : `${item.daysLeft} day${item.daysLeft > 1 ? 's' : ''} left`}
+                      </Text>
+                    </View>
+                    <View style={styles.freshBarBg}>
+                      <View style={[styles.freshBarFill, {
+                        width: `${item.pct}%`,
+                        backgroundColor: item.daysLeft <= 1 ? '#E53935' : item.daysLeft <= 2 ? '#F57C00' : '#43A047',
+                      }]} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+
+              {/* Tips */}
+              <View style={styles.freshTipCard}>
+                <Icon name="lightbulb-on-outline" size={14} color="#F57C00" />
+                <Text style={styles.freshTipText}>
+                  {urgentItems.length > 0
+                    ? `Cook ${urgentItems[0].name} today! Try making Sambar, Poriyal, or a quick stir-fry.`
+                    : freshItems.length > 0
+                    ? `${freshItems[0].tip}. Best used within ${freshItems[0].totalDays} days of delivery.`
+                    : 'Store veggies in airtight containers in the fridge for maximum freshness.'}
+                </Text>
+              </View>
+            </View>
+          );
+        })()}
+
         {/* Chat with Shop */}
         <View style={[styles.chatCard, themed.card]}>
           <View style={styles.chatHeader}>
@@ -540,6 +622,22 @@ const styles = StyleSheet.create({
   actionBtn: { alignItems: 'center', gap: 6, minWidth: 72 },
   actionBtnIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   actionBtnLabel: { fontSize: 11, fontWeight: '700' },
+  // Freshness Tracker
+  freshCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
+  freshHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  freshHeaderIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#FF9800', justifyContent: 'center', alignItems: 'center' },
+  freshTitle: { fontSize: 15, fontWeight: '800' },
+  freshSub: { fontSize: 10, color: COLORS.text.muted, marginTop: 1 },
+  freshUrgent: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFEBEE', borderRadius: RADIUS.md, padding: 10, marginBottom: 10 },
+  freshUrgentText: { flex: 1, fontSize: 12, fontWeight: '700', color: '#C62828' },
+  freshItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  freshItemName: { fontSize: 12, fontWeight: '700' },
+  freshItemDays: { fontSize: 11, fontWeight: '800' },
+  freshBarBg: { height: 4, backgroundColor: '#F5F5F5', borderRadius: 2, marginTop: 4, overflow: 'hidden' },
+  freshBarFill: { height: '100%', borderRadius: 2 },
+  freshTipCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FFFDE7', borderRadius: RADIUS.md, padding: 10, marginTop: 8 },
+  freshTipText: { flex: 1, fontSize: 11, fontWeight: '600', color: '#5D4037', lineHeight: 16 },
+
   chatCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, ...SHADOW.sm },
   chatHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md },
   chatTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text.primary, marginLeft: 8, flex: 1 },

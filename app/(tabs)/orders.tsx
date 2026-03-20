@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, RefreshControl, Alert } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -25,11 +25,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
 
 export default function OrdersScreen() {
   const router = useRouter();
-  const { orders } = useOrders();
+  const { orders, getUpcomingDeliveries, updateSubscriptionStatus } = useOrders();
   const { addToCart } = useCart();
   const { handleScroll } = useScrollContext();
   const themed = useThemedStyles();
   const [refreshing, setRefreshing] = useState(false);
+
+  const activeSubscriptions = orders.filter(o => o.subscription && o.subscription.status !== 'cancelled');
+  const regularOrders = orders.filter(o => !o.subscription || o.subscription.status === 'cancelled');
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
@@ -111,14 +114,142 @@ export default function OrdersScreen() {
           <Icon name="calendar-month" size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </LinearGradient>
-      {orders.length === 0 ? (
+      {orders.length === 0 && activeSubscriptions.length === 0 ? (
         <View style={styles.empty}>
           <Icon name="clipboard-text-outline" size={64} color={COLORS.text.muted} />
           <Text style={styles.emptyTitle}>No orders yet</Text>
           <Text style={styles.emptyDesc}>Place your first Chopify order!</Text>
         </View>
       ) : (
-        <FlatList data={orders} keyExtractor={o => o.id} renderItem={renderOrder} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />} />
+        <FlatList
+          data={regularOrders}
+          keyExtractor={o => o.id}
+          renderItem={renderOrder}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />}
+          ListHeaderComponent={activeSubscriptions.length > 0 ? (
+            <View style={styles.subSection}>
+              <View style={styles.subSectionHeader}>
+                <Icon name="autorenew" size={18} color={COLORS.primary} />
+                <Text style={[styles.subSectionTitle, themed.textPrimary]}>My Subscriptions</Text>
+                <View style={styles.subCountChip}>
+                  <Text style={styles.subCountChipText}>{activeSubscriptions.length}</Text>
+                </View>
+              </View>
+
+              {activeSubscriptions.map(order => {
+                const sub = order.subscription!;
+                const freqLabel = sub.frequency.charAt(0).toUpperCase() + sub.frequency.slice(1);
+                const upcoming = getUpcomingDeliveries(order.id, 7);
+                const nextDelivery = upcoming.find(d => !d.isSkipped);
+                const skippedCount = upcoming.filter(d => d.isSkipped).length;
+
+                return (
+                  <TouchableOpacity
+                    key={order.id}
+                    style={[styles.subCard, themed.card]}
+                    onPress={() => router.push({ pathname: '/subscription-manage' as any, params: { id: order.id } })}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.subCardTop}>
+                      <View style={[styles.subCardIcon, sub.status === 'paused' && { backgroundColor: '#FFF3E0' }]}>
+                        <Icon
+                          name={sub.status === 'paused' ? 'pause-circle' : sub.frequency === 'daily' ? 'calendar-today' : sub.frequency === 'weekly' ? 'calendar-week' : 'calendar-month'}
+                          size={20}
+                          color={sub.status === 'paused' ? '#F57C00' : COLORS.primary}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[styles.subCardTitle, themed.textPrimary]}>{freqLabel} Subscription</Text>
+                          <View style={[styles.subStatusPill, sub.status === 'paused' && styles.subStatusPaused]}>
+                            <Text style={[styles.subStatusText, sub.status === 'paused' && styles.subStatusTextPaused]}>
+                              {sub.status === 'active' ? 'Active' : 'Paused'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.subCardDetail}>
+                          {order.items.length} items · {'\u20B9'}{order.total}/delivery
+                        </Text>
+                      </View>
+                      <Icon name="chevron-right" size={20} color={COLORS.text.muted} />
+                    </View>
+
+                    {/* Next Delivery / Upcoming Info */}
+                    <View style={styles.subCardBottom}>
+                      {nextDelivery ? (
+                        <View style={styles.subNextDelivery}>
+                          <Icon name="truck-delivery-outline" size={14} color={COLORS.primary} />
+                          <Text style={styles.subNextText}>
+                            Next: {nextDelivery.dayLabel}, {new Date(nextDelivery.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.subNextDelivery}>
+                          <Icon name="calendar-blank" size={14} color={COLORS.text.muted} />
+                          <Text style={[styles.subNextText, { color: COLORS.text.muted }]}>No upcoming deliveries</Text>
+                        </View>
+                      )}
+                      <View style={styles.subQuickStats}>
+                        <Text style={styles.subQuickStat}>{upcoming.filter(d => !d.isSkipped).length} upcoming</Text>
+                        {skippedCount > 0 && <Text style={styles.subQuickStatSkipped}>{skippedCount} skipped</Text>}
+                      </View>
+                    </View>
+
+                    {/* Quick Actions */}
+                    <View style={styles.subQuickActions}>
+                      <TouchableOpacity
+                        style={styles.subQuickBtn}
+                        onPress={(e) => { e.stopPropagation(); router.push({ pathname: '/subscription-manage' as any, params: { id: order.id } }); }}
+                      >
+                        <Icon name="cog-outline" size={14} color={COLORS.primary} />
+                        <Text style={styles.subQuickBtnText}>Manage</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.subQuickBtn}
+                        onPress={(e) => { e.stopPropagation(); router.push({ pathname: '/subscription-calendar' as any, params: { orderId: order.id } }); }}
+                      >
+                        <Icon name="calendar-month" size={14} color={COLORS.primary} />
+                        <Text style={styles.subQuickBtnText}>Calendar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.subQuickBtn}
+                        onPress={(e) => { e.stopPropagation(); router.push({ pathname: '/subscription-plan-editor' as any, params: { id: order.id } }); }}
+                      >
+                        <Icon name="pencil-outline" size={14} color={COLORS.primary} />
+                        <Text style={styles.subQuickBtnText}>Edit Plan</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.subQuickBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Alert.alert(
+                            'Cancel Subscription',
+                            'Are you sure? This cannot be undone. You will need to create a new subscription.',
+                            [
+                              { text: 'Keep', style: 'cancel' },
+                              { text: 'Cancel It', style: 'destructive', onPress: () => updateSubscriptionStatus(order.id, 'cancelled') },
+                            ]
+                          );
+                        }}
+                      >
+                        <Icon name="close-circle-outline" size={14} color={COLORS.status.error} />
+                        <Text style={styles.subQuickBtnCancel}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {regularOrders.length > 0 && (
+                <Text style={[styles.regularOrdersLabel, themed.textPrimary]}>Orders</Text>
+              )}
+            </View>
+          ) : undefined}
+        />
       )}
     </SafeAreaView>
   );
@@ -154,4 +285,30 @@ const styles = StyleSheet.create({
   chatBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
   subBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: SPACING.sm, backgroundColor: '#FFF8E1', alignSelf: 'flex-start', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 3 },
   subBadgeText: { fontSize: 10, fontWeight: '700', color: '#F57C00' },
+  // Subscription section
+  subSection: { marginBottom: SPACING.md },
+  subSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.md },
+  subSectionTitle: { flex: 1, fontSize: 16, fontWeight: '800' },
+  subCountChip: { backgroundColor: COLORS.primary, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
+  subCountChipText: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+  subCard: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, marginBottom: SPACING.md, overflow: 'hidden', ...SHADOW.sm },
+  subCardTop: { flexDirection: 'row', alignItems: 'center', padding: SPACING.base, gap: 10 },
+  subCardIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center' },
+  subCardTitle: { fontSize: 14, fontWeight: '700' },
+  subCardDetail: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  subStatusPill: { backgroundColor: '#E8F5E9', borderRadius: RADIUS.full, paddingHorizontal: 8, paddingVertical: 2 },
+  subStatusPaused: { backgroundColor: '#FFF8E1' },
+  subStatusText: { fontSize: 9, fontWeight: '700', color: COLORS.primary },
+  subStatusTextPaused: { color: '#F57C00' },
+  subCardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.base, paddingBottom: 10 },
+  subNextDelivery: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  subNextText: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
+  subQuickStats: { flexDirection: 'row', gap: 8 },
+  subQuickStat: { fontSize: 10, fontWeight: '600', color: COLORS.text.muted },
+  subQuickStatSkipped: { fontSize: 10, fontWeight: '600', color: COLORS.status.error },
+  subQuickActions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.border },
+  subQuickBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10 },
+  subQuickBtnText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
+  subQuickBtnCancel: { fontSize: 11, fontWeight: '700', color: COLORS.status.error },
+  regularOrdersLabel: { fontSize: 16, fontWeight: '800', marginTop: SPACING.sm, marginBottom: SPACING.sm },
 });

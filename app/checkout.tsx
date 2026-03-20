@@ -160,6 +160,7 @@ export default function CheckoutScreen() {
     autoRepeat?: string;
     subMonthlyDates?: string;
     selectedDates?: string;
+    subTimeSlot?: string;
   }>();
   const themed = useThemedStyles();
   const { cartItems, getSubtotal, getCuttingTotal, clearCart } = useCart();
@@ -192,7 +193,7 @@ export default function CheckoutScreen() {
   const [subStartDate, setSubStartDate] = useState(
     params.selectedDates ? params.selectedDates.split(',')[0] : SCHEDULE_DATES[1].key
   );
-  const [subTimeSlot, setSubTimeSlot] = useState(TIME_SLOTS[0].id);
+  const [subTimeSlot, setSubTimeSlot] = useState(params.subTimeSlot || TIME_SLOTS[0].id);
 
   const { familyMembers } = useDiet();
   const { earnPoints } = useLoyalty();
@@ -377,12 +378,7 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     if (cartItems.length === 0) return;
 
-    // Show weekly plan setup modal for subscription orders before placing
-    if (orderType === 'subscribe' && !showWeeklyPlanModal) {
-      initWeeklyPlanFromCart();
-      setShowWeeklyPlanModal(true);
-      return;
-    }
+    // Skip weekly plan modal — subscription setup is handled separately
 
     setPlacing(true);
     try {
@@ -472,7 +468,8 @@ export default function CheckoutScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Delivery Mode Toggle */}
+        {/* Delivery Mode Toggle — hide for subscription orders (time already set in subscription setup) */}
+        {orderType !== 'subscribe' ? (
         <View style={[styles.sectionCard, themed.card]}>
           <View style={styles.sectionHeader}><Icon name="clock-outline" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Delivery Time</Text></View>
           <View style={styles.modeToggle}>
@@ -527,9 +524,23 @@ export default function CheckoutScreen() {
             </>
           )}
         </View>
+        ) : (
+        <View style={[styles.sectionCard, themed.card]}>
+          <View style={styles.sectionHeader}><Icon name="clock-outline" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Delivery Time</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
+            <Icon name="check-circle" size={20} color={COLORS.primary} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.text.primary }}>
+              {TIME_SLOTS.find(t => t.id === subTimeSlot)?.label || 'Selected in subscription'}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, color: COLORS.text.muted }}>
+            Set during subscription setup
+          </Text>
+        </View>
+        )}
 
         {/* Subscription */}
-        <View style={[styles.sectionCard, themed.card]}>
+        {/* <View style={[styles.sectionCard, themed.card]}>
           <View style={styles.sectionHeader}><Icon name="repeat" size={20} color={COLORS.primary} /><Text style={[styles.sectionTitle, themed.textPrimary]}>Order Frequency</Text></View>
           <View style={styles.modeToggle}>
             <TouchableOpacity style={[styles.modeBtn, orderType === 'once' && styles.modeBtnActive]} onPress={() => setOrderType('once')}>
@@ -563,10 +574,10 @@ export default function CheckoutScreen() {
                     </View>
                   </TouchableOpacity>
                 );
-              })}
+              })} */}
 
               {/* Weekly: Pick a day */}
-              {subFrequency === 'weekly' && (
+              {/* {subFrequency === 'weekly' && (
                 <>
                   <Text style={styles.scheduleLabel}>Delivery Day</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
@@ -580,10 +591,10 @@ export default function CheckoutScreen() {
                     })}
                   </ScrollView>
                 </>
-              )}
+              )} */}
 
               {/* Monthly: Pick dates */}
-              {subFrequency === 'monthly' && (
+              {/* {subFrequency === 'monthly' && (
                 <>
                   <Text style={styles.scheduleLabel}>Delivery Dates (tap to select)</Text>
                   <View style={styles.timeGrid}>
@@ -599,10 +610,10 @@ export default function CheckoutScreen() {
                     })}
                   </View>
                 </>
-              )}
+              )} */}
 
               {/* Start Date */}
-              <Text style={styles.scheduleLabel}>Start From</Text>
+              {/* <Text style={styles.scheduleLabel}>Start From</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
                 {SCHEDULE_DATES.map(d => {
                   const isActive = subStartDate === d.key;
@@ -613,10 +624,10 @@ export default function CheckoutScreen() {
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
+              </ScrollView> */}
 
               {/* Preferred Time */}
-              <Text style={styles.scheduleLabel}>Preferred Time</Text>
+              {/* <Text style={styles.scheduleLabel}>Preferred Time</Text>
               <View style={styles.timeGrid}>
                 {TIME_SLOTS.map(t => {
                   const isActive = subTimeSlot === t.id;
@@ -626,10 +637,10 @@ export default function CheckoutScreen() {
                     </TouchableOpacity>
                   );
                 })}
-              </View>
+              </View> */}
 
               {/* Summary Card */}
-              <View style={styles.subSummaryCard}>
+              {/* <View style={styles.subSummaryCard}>
                 <View style={styles.subSummaryHeader}>
                   <Icon name="check-decagram" size={18} color={COLORS.primary} />
                   <Text style={styles.subSummaryTitle}>Subscription Summary</Text>
@@ -640,15 +651,15 @@ export default function CheckoutScreen() {
                 <View style={styles.subSummaryRow}><Text style={styles.subSummaryLabel}>Starts</Text><Text style={styles.subSummaryValue}>{SCHEDULE_DATES.find(d => d.key === subStartDate)?.label || ''}</Text></View>
                 <View style={styles.subSummaryRow}><Text style={styles.subSummaryLabel}>Time</Text><Text style={styles.subSummaryValue}>{TIME_SLOTS.find(t => t.id === subTimeSlot)?.label || ''}</Text></View>
                 <View style={styles.subSummaryRow}><Text style={styles.subSummaryLabel}>Savings</Text><Text style={[styles.subSummaryValue, { color: '#F57C00' }]}>{subFrequency === 'daily' ? '10%' : subFrequency === 'weekly' ? '15%' : '20%'} off delivery</Text></View>
-              </View>
+              </View> */}
 
-              <View style={styles.subNote}>
+              {/* <View style={styles.subNote}>
                 <Icon name="information-outline" size={14} color={COLORS.text.muted} />
                 <Text style={styles.subNoteText}>You can pause or cancel anytime from your profile</Text>
               </View>
             </>
           )}
-        </View>
+        </View> */}
 
         {/* Items */}
         <View style={[styles.sectionCard, themed.card]}>
@@ -664,6 +675,24 @@ export default function CheckoutScreen() {
             </View>
           ))}
         </View>
+
+        {/* Subscribe & Save Banner */}
+        <TouchableOpacity
+          style={[styles.sectionCard, themed.card, { borderColor: '#FF6F00', borderWidth: 1, borderStyle: 'dashed' }]}
+          activeOpacity={0.8}
+          onPress={() => router.push('/subscription-setup' as any)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ backgroundColor: '#FFF3E0', borderRadius: 12, padding: 10 }}>
+              <Icon name="autorenew" size={24} color="#FF6F00" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[{ fontSize: 14, fontWeight: '800' }, themed.textPrimary]}>Want regular delivery? Subscribe & Save!</Text>
+              <Text style={{ fontSize: 11, color: COLORS.text.muted, marginTop: 2 }}>Set up weekly or monthly plans with special diet options</Text>
+            </View>
+            <Icon name="chevron-right" size={20} color="#FF6F00" />
+          </View>
+        </TouchableOpacity>
 
         {/* Note */}
         <View style={[styles.sectionCard, themed.card]}>
@@ -859,7 +888,7 @@ export default function CheckoutScreen() {
       <View style={[styles.orderBar, themed.card]}>
         <View><Text style={[styles.orderBarTotal, themed.textPrimary]}>{'\u20B9'}{total}</Text><Text style={styles.orderBarSub}>{cartItems.length} items | {deliveryLabel}</Text></View>
         <TouchableOpacity style={[styles.orderBarBtn, placing && { opacity: 0.6 }]} onPress={handlePlaceOrder} disabled={placing}>
-          <Icon name="cart-check" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : orderType === 'subscribe' ? 'Set Up Plan & Order' : 'Place Order'}</Text>
+          <Icon name="cart-check" size={20} color="#FFF" /><Text style={styles.orderBarBtnText}>{placing ? 'Placing...' : 'Place Order'}</Text>
         </TouchableOpacity>
       </View>
 

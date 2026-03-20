@@ -84,6 +84,61 @@ function buildTimeline(createdAt: Date): OrderTimeline[] {
 
 const DEMO_ORDERS: Order[] = [
   {
+    id: 'SUB1001',
+    items: [
+      { id: '1', name: 'Fresh Tomatoes', image: 'https://images.unsplash.com/photo-1546470427-0d4db154ceb8?w=200', price: 40, quantity: 2, unit: '500g', cutType: 'small_pieces' as any },
+      { id: '4', name: 'Onions', image: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=200', price: 35, quantity: 1, unit: '1 kg', cutType: 'slices' as any },
+      { id: '7', name: 'Carrots', image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=200', price: 45, quantity: 1, unit: '500g', cutType: 'cubes' as any },
+    ],
+    status: 'confirmed',
+    total: 120,
+    subtotal: 120,
+    cuttingCharges: 0,
+    deliveryFee: 0,
+    discount: 0,
+    orderType: 'subscription' as any,
+    deliverySlot: '7:00 AM - 8:00 AM',
+    deliveryAddress: '42, Anna Nagar, Coimbatore',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    paymentMethod: 'upi',
+    subscription: {
+      frequency: 'weekly',
+      preferredTime: '7:00 AM - 8:00 AM',
+      startDate: new Date().toISOString().split('T')[0],
+      status: 'active',
+      skippedDeliveries: [],
+      cutoffHours: 10,
+    },
+  },
+  {
+    id: 'SUB1002',
+    items: [
+      { id: '1', name: 'Fresh Tomatoes', image: 'https://images.unsplash.com/photo-1546470427-0d4db154ceb8?w=200', price: 40, quantity: 2, unit: '500g', cutType: 'small_pieces' as any },
+      { id: '13', name: 'Capsicum', image: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=200', price: 60, quantity: 1, unit: '250g', cutType: 'slices' as any },
+      { id: '4', name: 'Onions', image: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=200', price: 35, quantity: 1, unit: '1 kg' },
+    ],
+    status: 'confirmed',
+    total: 135,
+    subtotal: 135,
+    cuttingCharges: 0,
+    deliveryFee: 0,
+    discount: 0,
+    orderType: 'subscription' as any,
+    deliverySlot: '9:00 AM - 10:00 AM',
+    deliveryAddress: '42, Anna Nagar, Coimbatore',
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    paymentMethod: 'upi',
+    subscription: {
+      frequency: 'monthly',
+      preferredTime: '9:00 AM - 10:00 AM',
+      startDate: new Date().toISOString().split('T')[0],
+      monthlyDates: [1, 5, 10, 15, 20, 25],
+      status: 'active',
+      skippedDeliveries: [],
+      cutoffHours: 10,
+    },
+  },
+  {
     id: 'CUT1001',
     items: [
       { id: '1', name: 'Fresh Tomatoes', image: 'https://images.unsplash.com/photo-1546470427-0d4db154ceb8?w=200', price: 40, quantity: 2, unit: '500g', cutType: 'diced' as any },
@@ -362,9 +417,14 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       if (sub.frequency === 'daily') {
         isDeliveryDay = true;
       } else if (sub.frequency === 'weekly') {
-        isDeliveryDay = dayName === sub.weeklyDay;
+        const wd = dayName as any;
+        if (sub.weeklyPlan) { const dp = sub.weeklyPlan[wd]; isDeliveryDay = !!(dp && dp.isActive && dp.items.length > 0); }
+        else if (sub.weeklyDay) { isDeliveryDay = dayName === sub.weeklyDay; }
+        else { isDeliveryDay = dayName !== 'Sun'; }
       } else if (sub.frequency === 'monthly') {
-        isDeliveryDay = (sub.monthlyDates || []).includes(current.getDate());
+        if (sub.monthlyDates && sub.monthlyDates.length > 0) {
+          isDeliveryDay = sub.monthlyDates.includes(current.getDate());
+        } else { isDeliveryDay = dayName !== 'Sun'; }
       }
       if (isDeliveryDay) count++;
       current.setDate(current.getDate() + 1);
@@ -404,8 +464,16 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       let isDeliveryDay = false;
       if (sub.frequency === 'daily') isDeliveryDay = true;
-      else if (sub.frequency === 'weekly') isDeliveryDay = dayName === sub.weeklyDay;
-      else if (sub.frequency === 'monthly') isDeliveryDay = (sub.monthlyDates || []).includes(current.getDate());
+      else if (sub.frequency === 'weekly') {
+        const wd = dayName as any;
+        if (sub.weeklyPlan) { const dp = sub.weeklyPlan[wd]; isDeliveryDay = !!(dp && dp.isActive && dp.items.length > 0); }
+        else if (sub.weeklyDay) { isDeliveryDay = dayName === sub.weeklyDay; }
+        else { isDeliveryDay = dayName !== 'Sun'; }
+      }
+      else if (sub.frequency === 'monthly') {
+        if (sub.monthlyDates && sub.monthlyDates.length > 0) isDeliveryDay = sub.monthlyDates.includes(current.getDate());
+        else isDeliveryDay = dayName !== 'Sun';
+      }
 
       if (isDeliveryDay && !existingSkipped.some(s => s.date === dateStr)) {
         newSkips.push({
@@ -499,9 +567,19 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       if (sub.frequency === 'daily') {
         isDeliveryDay = true;
       } else if (sub.frequency === 'weekly') {
-        isDeliveryDay = dayName === sub.weeklyDay;
+        const wd = dayName as any;
+        if (sub.weeklyPlan) {
+          const dp = sub.weeklyPlan[wd];
+          isDeliveryDay = !!(dp && dp.isActive && dp.items.length > 0);
+        } else if (sub.weeklyDay) {
+          isDeliveryDay = dayName === sub.weeklyDay;
+        } else {
+          isDeliveryDay = dayName !== 'Sun';
+        }
       } else if (sub.frequency === 'monthly') {
-        isDeliveryDay = (sub.monthlyDates || []).includes(d.getDate());
+        if (sub.monthlyDates && sub.monthlyDates.length > 0) {
+          isDeliveryDay = sub.monthlyDates.includes(d.getDate());
+        } else { isDeliveryDay = dayName !== 'Sun'; }
       }
 
       if (!isDeliveryDay) continue;

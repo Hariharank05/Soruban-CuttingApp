@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Image, Modal, FlatList } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -8,6 +8,11 @@ import { COLORS, SPACING, RADIUS, SHADOW } from '@/src/utils/theme';
 import { useThemedStyles } from '@/src/utils/useThemedStyles';
 import { useOrders } from '@/context/OrderContext';
 import { useDiet } from '@/context/DietContext';
+import type { CutType, WeekDay } from '@/types';
+import products from '@/data/products.json';
+import { DISH_PACKS } from '@/data/dishPacks';
+
+const WEEKDAYS_MAP: Record<string, WeekDay> = { Sun: 'Sun', Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' };
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
@@ -27,11 +32,13 @@ export default function SubscriptionCalendarScreen() {
   const router = useRouter();
   const themed = useThemedStyles();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const { orders, skipDelivery, unskipDelivery } = useOrders();
+  const { orders, skipDelivery, unskipDelivery, updateWeeklyPlan } = useOrders();
   const { vacationMode } = useDiet();
 
   const order = useMemo(() => orders.find(o => o.id === orderId), [orders, orderId]);
   const subscription = order?.subscription;
+
+  const [showProductPicker, setShowProductPicker] = useState(false);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -59,9 +66,34 @@ export default function SubscriptionCalendarScreen() {
       if (subscription.frequency === 'daily') {
         isDelivery = true;
       } else if (subscription.frequency === 'weekly') {
-        isDelivery = dayName === subscription.weeklyDay;
+        const weekDay = dayName as WeekDay;
+        if (subscription.weeklyPlan) {
+          // If weeklyPlan exists, check if that day is active with items
+          const dayPlan = subscription.weeklyPlan[weekDay];
+          if (dayPlan && dayPlan.isActive && dayPlan.items.length > 0) {
+            isDelivery = true;
+          }
+        } else if (subscription.weeklyDay) {
+          // Fallback: single weeklyDay
+          isDelivery = dayName === subscription.weeklyDay;
+        } else {
+          // No weeklyPlan and no weeklyDay — order has items, show all weekdays as delivery
+          if (order && order.items.length > 0 && dayName !== 'Sun') {
+            isDelivery = true;
+          }
+        }
       } else if (subscription.frequency === 'monthly') {
-        isDelivery = (subscription.monthlyDates || []).includes(day);
+        if (subscription.monthlyDates && subscription.monthlyDates.length > 0) {
+          isDelivery = subscription.monthlyDates.includes(day);
+        } else if (subscription.weeklyPlan) {
+          // Check if this weekday has items in the plan
+          const wd = dayName as WeekDay;
+          const dp = subscription.weeklyPlan[wd];
+          isDelivery = !!(dp && dp.isActive && dp.items.length > 0);
+        } else if (order && order.items.length > 0) {
+          // No monthlyDates and no plan — show all weekdays as delivery
+          isDelivery = dayName !== 'Sun';
+        }
       }
 
       if (isDelivery) {
@@ -83,7 +115,7 @@ export default function SubscriptionCalendarScreen() {
     }
 
     return map;
-  }, [subscription, currentMonth, currentYear]);
+  }, [subscription, currentMonth, currentYear, order]);
 
   // Calendar grid data
   const calendarGrid = useMemo(() => {
@@ -176,6 +208,84 @@ export default function SubscriptionCalendarScreen() {
     await unskipDelivery(orderId, selectedDetail.dateStr);
     Alert.alert('Success', 'Delivery has been restored.');
   };
+
+  // Get items for selected day from weeklyPlan or order items
+  const getSelectedDayItems = useCallback(() => {
+    if (!selectedDay || !order) return [];
+    const info = deliveryMap.get(selectedDay);
+    if (!info?.isDelivery) return [];
+    const d = new Date(currentYear, currentMonth, selectedDay);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }) as WeekDay;
+    const plan = subscription?.weeklyPlan?.[dayName];
+    if (plan && plan.items.length > 0) {
+      return plan.items.map(item => {
+        const product = (products as any[]).find(p => p.id === item.productId);
+        return { ...item, image: product?.image, price: product?.price || 0 };
+      });
+    }
+    // Fallback to order items (same items for all delivery days)
+    return order.items.map(oi => ({
+      productId: oi.id, name: oi.name, quantity: oi.quantity,
+      unit: oi.unit, cutType: oi.cutType, image: oi.image, price: oi.price,
+    }));
+  }, [selectedDay, currentMonth, currentYear, order, subscription, deliveryMap]);
+
+  const selectedDayItems = useMemo(() => getSelectedDayItems(), [getSelectedDayItems]);
+
+  const getSelectedWeekDay = useCallback((): WeekDay | null => {
+    if (!selectedDay) return null;
+    const d = new Date(currentYear, currentMonth, selectedDay);
+    return d.toLocaleDateString('en-US', { weekday: 'short' }) as WeekDay;
+  }, [selectedDay, currentMonth, currentYear]);
+
+  const handleAddProductToDay = useCallback((product: any) => {
+    if (!order || !orderId || !selectedDay) return;
+    const weekDay = getSelectedWeekDay();
+    if (!weekDay) return;
+    const currentPlan = subscription?.weeklyPlan || {};
+    const dayPlan = currentPlan[weekDay] || { day: weekDay, items: [], isActive: true };
+    if (dayPlan.items.some((i: any) => i.productId === product.id)) {
+      setShowProductPicker(false);
+      return;
+    }
+    const updatedDayPlan = {
+      ...dayPlan,
+      items: [...dayPlan.items, { productId: product.id, name: product.name, quantity: 1, unit: product.unit }],
+    };
+    const WEEKDAYS: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const fullPlan: any = {};
+    for (const d of WEEKDAYS) {
+      fullPlan[d] = currentPlan[d] || { day: d, items: [], isActive: true };
+    }
+    fullPlan[weekDay] = updatedDayPlan;
+    updateWeeklyPlan(orderId, fullPlan);
+    setShowProductPicker(false);
+    Alert.alert('Added', `${product.name} added to ${weekDay}'s delivery.`);
+  }, [order, orderId, selectedDay, subscription, getSelectedWeekDay, updateWeeklyPlan]);
+
+  const handleRemoveProductFromDay = useCallback((productId: string) => {
+    if (!order || !orderId || !selectedDay) return;
+    const weekDay = getSelectedWeekDay();
+    if (!weekDay) return;
+    const currentPlan = subscription?.weeklyPlan || {};
+    const dayPlan = currentPlan[weekDay] || { day: weekDay, items: [], isActive: true };
+    Alert.alert('Remove Item', 'Remove this item from this day\'s delivery?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove', style: 'destructive', onPress: () => {
+          const updatedItems = dayPlan.items.filter((i: any) => i.productId !== productId);
+          const updatedDayPlan = { ...dayPlan, items: updatedItems };
+          const WEEKDAYS: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          const fullPlan: any = {};
+          for (const d of WEEKDAYS) {
+            fullPlan[d] = currentPlan[d] || { day: d, items: [], isActive: true };
+          }
+          fullPlan[weekDay] = updatedDayPlan;
+          updateWeeklyPlan(orderId, fullPlan);
+        },
+      },
+    ]);
+  }, [order, orderId, selectedDay, subscription, getSelectedWeekDay, updateWeeklyPlan]);
 
   const getDayCellStyle = (day: number) => {
     const d = new Date(currentYear, currentMonth, day);
@@ -391,29 +501,114 @@ export default function SubscriptionCalendarScreen() {
                   </View>
                 )}
 
-                {/* Skip / Unskip button — not for vacation days */}
-                {!selectedDetail.isPast && selectedDetail.status === 'scheduled' && (
-                  <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.7}>
-                    <Icon name="close-circle-outline" size={18} color="#FFF" />
-                    <Text style={styles.skipBtnText}>Skip This Delivery</Text>
+                {/* Items for this day */}
+                {selectedDayItems.length > 0 && (
+                  <View style={styles.dayItemsSection}>
+                    <View style={styles.dayItemsHeader}>
+                      <Text style={[styles.dayItemsTitle, themed.textPrimary]}>
+                        Items ({selectedDayItems.length})
+                      </Text>
+                      {!selectedDetail.isPast && selectedDetail.status !== 'vacation' && (
+                        <TouchableOpacity style={styles.addItemSmallBtn} onPress={() => setShowProductPicker(true)}>
+                          <Icon name="plus" size={14} color="#FFF" />
+                          <Text style={styles.addItemSmallBtnText}>Add</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {selectedDayItems.map((item: any, idx: number) => (
+                      <View key={`${item.productId}-${idx}`} style={[styles.dayItemRow, idx < selectedDayItems.length - 1 && styles.dayItemRowBorder]}>
+                        {item.image ? (
+                          <Image source={{ uri: item.image }} style={styles.dayItemImage} />
+                        ) : (
+                          <View style={[styles.dayItemImage, { backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Icon name="food-apple" size={16} color={COLORS.text.muted} />
+                          </View>
+                        )}
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={[styles.dayItemName, themed.textPrimary]}>{item.name}</Text>
+                          <Text style={styles.dayItemMeta}>
+                            {item.unit} · x{item.quantity}
+                            {item.price ? ` · ₹${item.price}` : ''}
+                            {item.cutType ? ` · ${item.cutType.replace('_', ' ')}` : ''}
+                          </Text>
+                        </View>
+                        {!selectedDetail.isPast && selectedDetail.status !== 'vacation' && (
+                          <TouchableOpacity style={styles.dayItemRemoveBtn} onPress={() => handleRemoveProductFromDay(item.productId)}>
+                            <Icon name="close" size={14} color={COLORS.status.error} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {selectedDayItems.length === 0 && !selectedDetail.isPast && (
+                  <TouchableOpacity style={styles.addItemsEmptyBtn} onPress={() => setShowProductPicker(true)}>
+                    <Icon name="plus-circle-outline" size={18} color={COLORS.primary} />
+                    <Text style={styles.addItemsEmptyText}>Add items for this day</Text>
                   </TouchableOpacity>
                 )}
-                {!selectedDetail.isPast && selectedDetail.status === 'skipped' && (
-                  <TouchableOpacity style={styles.unskipBtn} onPress={handleUnskip} activeOpacity={0.7}>
-                    <Icon name="undo" size={18} color="#FFF" />
-                    <Text style={styles.skipBtnText}>Restore Delivery</Text>
-                  </TouchableOpacity>
-                )}
+
+                {/* Action buttons */}
+                <View style={styles.dayActionRow}>
+                  {!selectedDetail.isPast && selectedDetail.status === 'scheduled' && (
+                    <TouchableOpacity style={[styles.skipBtn, { flex: 1 }]} onPress={handleSkip} activeOpacity={0.7}>
+                      <Icon name="close-circle-outline" size={16} color="#FFF" />
+                      <Text style={styles.skipBtnText}>Skip</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!selectedDetail.isPast && selectedDetail.status === 'skipped' && (
+                    <TouchableOpacity style={[styles.unskipBtn, { flex: 1 }]} onPress={handleUnskip} activeOpacity={0.7}>
+                      <Icon name="undo" size={16} color="#FFF" />
+                      <Text style={styles.skipBtnText}>Restore</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!selectedDetail.isPast && selectedDetail.status !== 'vacation' && (
+                    <TouchableOpacity
+                      style={styles.editPlanBtn}
+                      onPress={() => router.push({ pathname: '/subscription-plan-editor' as any, params: { id: orderId } })}
+                      activeOpacity={0.7}
+                    >
+                      <Icon name="pencil" size={16} color={COLORS.primary} />
+                      <Text style={styles.editPlanBtnText}>Edit Plan</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
                 {selectedDetail.status === 'vacation' && (
                   <View style={styles.vacationNote}>
                     <Icon name="information-outline" size={16} color="#607D8B" />
-                    <Text style={styles.vacationNoteText}>This delivery is paused due to vacation mode. Manage vacation from settings to resume.</Text>
+                    <Text style={styles.vacationNoteText}>This delivery is paused due to vacation mode.</Text>
                   </View>
                 )}
               </View>
             ) : (
               <View style={styles.detailBody}>
                 <Text style={[styles.noDeliveryText, themed.textMuted]}>No delivery scheduled for this day.</Text>
+                {!selectedDetail.isPast && (
+                  <TouchableOpacity
+                    style={styles.addDeliveryBtn}
+                    onPress={() => {
+                      const weekDay = getSelectedWeekDay();
+                      if (!weekDay || !orderId) return;
+                      const currentPlan = subscription?.weeklyPlan || {};
+                      const WKDAYS: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                      const fullPlan: any = {};
+                      for (const d of WKDAYS) {
+                        fullPlan[d] = currentPlan[d] || { day: d, items: [], isActive: d === weekDay };
+                      }
+                      if (!fullPlan[weekDay].isActive) {
+                        fullPlan[weekDay] = { ...fullPlan[weekDay], isActive: true };
+                      }
+                      updateWeeklyPlan(orderId, fullPlan);
+                      setShowProductPicker(true);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Icon name="plus-circle" size={20} color={COLORS.primary} />
+                    <Text style={styles.addDeliveryBtnText}>Add delivery for this day</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -449,6 +644,46 @@ export default function SubscriptionCalendarScreen() {
 
         <View style={{ height: SPACING.xxxl }} />
       </ScrollView>
+
+      {/* Product Picker Modal */}
+      <Modal visible={showProductPicker} animationType="slide" onRequestClose={() => setShowProductPicker(false)}>
+        <SafeAreaView style={[styles.container, themed.safeArea]}>
+          <View style={styles.pickerHeader}>
+            <Text style={[styles.pickerTitle, themed.textPrimary]}>
+              Add Product — {selectedDay && new Date(currentYear, currentMonth, selectedDay).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </Text>
+            <TouchableOpacity onPress={() => setShowProductPicker(false)}>
+              <Icon name="close" size={24} color={themed.colors.text.primary} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={products as any[]}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ padding: SPACING.base }}
+            renderItem={({ item }) => {
+              const alreadyAdded = selectedDayItems.some((i: any) => i.productId === item.id);
+              return (
+                <TouchableOpacity
+                  style={[styles.pickerRow, alreadyAdded && { opacity: 0.4 }]}
+                  onPress={() => !alreadyAdded && handleAddProductToDay(item)}
+                  disabled={alreadyAdded}
+                >
+                  <Image source={{ uri: item.image }} style={styles.pickerImage} />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={[styles.pickerName, themed.textPrimary]}>{item.name}</Text>
+                    <Text style={styles.pickerInfo}>{item.unit} · ₹{item.price}</Text>
+                  </View>
+                  {alreadyAdded ? (
+                    <Icon name="check-circle" size={20} color={COLORS.primary} />
+                  ) : (
+                    <Icon name="plus-circle-outline" size={20} color={COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -683,6 +918,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: SPACING.base,
   },
+  // Day items
+  dayItemsSection: { marginTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.sm },
+  dayItemsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  dayItemsTitle: { fontSize: 13, fontWeight: '700' },
+  addItemSmallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 5 },
+  addItemSmallBtnText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  dayItemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  dayItemRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  dayItemImage: { width: 36, height: 36, borderRadius: 8 },
+  dayItemName: { fontSize: 12, fontWeight: '700' },
+  dayItemMeta: { fontSize: 10, color: COLORS.text.muted, marginTop: 1 },
+  dayItemRemoveBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFEBEE', justifyContent: 'center', alignItems: 'center' },
+  addItemsEmptyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, borderStyle: 'dashed', marginTop: SPACING.sm },
+  addItemsEmptyText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  addDeliveryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, borderStyle: 'dashed', marginTop: SPACING.sm },
+  addDeliveryBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  dayActionRow: { flexDirection: 'row', gap: 8, marginTop: SPACING.md },
+  editPlanBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary },
+  editPlanBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  // Picker modal
+  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.base, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  pickerTitle: { fontSize: 15, fontWeight: '800' },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  pickerImage: { width: 40, height: 40, borderRadius: 10 },
+  pickerName: { fontSize: 13, fontWeight: '700' },
+  pickerInfo: { fontSize: 11, color: COLORS.text.muted, marginTop: 2 },
+  // Action buttons
   skipBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -690,7 +952,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.status.error,
     borderRadius: RADIUS.md,
     paddingVertical: SPACING.md,
-    marginTop: SPACING.xs,
     gap: SPACING.sm,
   },
   unskipBtn: {
@@ -700,12 +961,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.status.success,
     borderRadius: RADIUS.md,
     paddingVertical: SPACING.md,
-    marginTop: SPACING.xs,
     gap: SPACING.sm,
   },
   skipBtnText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   vacationNote: {
